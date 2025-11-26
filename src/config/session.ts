@@ -4,9 +4,10 @@ import type { Pool } from 'pg';
 let PgStore: any;
 try {
   const connectPgSimple = require('connect-pg-simple');
-  PgStore = connectPgSimple(session);
-} catch (error) {
-  console.warn('connect-pg-simple não encontrado, usando MemoryStore');
+  PgStore = connectPgSimple.default ? connectPgSimple.default(session) : connectPgSimple(session);
+  console.log('✅ connect-pg-simple carregado com sucesso');
+} catch (error: any) {
+  console.warn('⚠️ connect-pg-simple não encontrado, usando MemoryStore:', error?.message || error);
 }
 
 const isProduction = process.env.NODE_ENV === 'production';

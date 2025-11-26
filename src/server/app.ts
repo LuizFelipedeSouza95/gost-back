@@ -27,6 +27,8 @@ const logger = pino({
 
 export function createApp(orm: MikroORM) {
   const app = express();
+  
+  app.set('trust proxy', true);
 
   const databaseUrl = process.env.DATABASE_URL || process.env.GOST_DATABASE_URL;
   const sessionPool = databaseUrl ? new Pool({
