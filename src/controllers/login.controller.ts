@@ -133,6 +133,15 @@ export class LoginController {
 
             const redirectUrl = `${frontendUrl}?auth=success&sessionId=${req.sessionID}`;
             console.log('🔄 Redirecionando para:', redirectUrl);
+            console.log('🍪 Configuração do cookie:', {
+                name: 'gost.session',
+                domain: req.session.cookie.domain,
+                secure: req.session.cookie.secure,
+                sameSite: req.session.cookie.sameSite,
+                httpOnly: req.session.cookie.httpOnly,
+                path: req.session.cookie.path,
+            });
+            
             res.redirect(redirectUrl);
         } catch (error: any) {
             console.error('❌ Erro no callback do Google:', {
