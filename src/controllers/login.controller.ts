@@ -122,9 +122,22 @@ export class LoginController {
                 roles: result.user.roles,
             };
 
+            console.log('💾 Salvando sessão...', {
+                sessionId: req.sessionID,
+                userId: req.session.userId,
+                hasUser: !!req.session.user,
+            });
+
             // Salva a sessão antes de redirecionar
             const frontendUrl = this.getFrontendUrl(req);
             console.log('🔄 Redirecionando para:', frontendUrl);
+            console.log('🍪 Configuração do cookie:', {
+                secure: req.session.cookie.secure,
+                sameSite: req.session.cookie.sameSite,
+                httpOnly: req.session.cookie.httpOnly,
+                domain: req.session.cookie.domain,
+                path: req.session.cookie.path,
+            });
             
             req.session.save((err) => {
                 if (err) {
@@ -132,7 +145,11 @@ export class LoginController {
                     return res.redirect(frontendUrl);
                 }
 
-                console.log('✅ Sessão salva, redirecionando para:', frontendUrl);
+                console.log('✅ Sessão salva com sucesso!', {
+                    sessionId: req.sessionID,
+                    userId: req.session.userId,
+                });
+                console.log('🔄 Redirecionando para:', frontendUrl);
                 res.redirect(frontendUrl);
             });
         } catch (error: any) {
