@@ -29,25 +29,35 @@ RUN for i in 1 2 3 4 5; do \
         break || sleep 15; \
     done
 
-# Copiar primeiro package.json e yarn.lock para melhor cache de layers
-# Se yarn.lock não estiver no contexto, o build falhará aqui
-# Certifique-se de executar: docker build -t gost-airsoft-backend .
-# a partir do diretório BackEnd que contém yarn.lock
-COPY package.json yarn.lock ./
+# Copiar primeiro package.json para melhor cache de layers
+COPY package.json ./
 
+# Instalar dependências inicialmente (sem --frozen-lockfile caso yarn.lock não exista)
 # Configurar Yarn para tolerar instabilidade de rede (timeout de 10 minutos)
-# Instalar dependências (todas - incluindo devDependencies para build)
 # Com retry para lidar com problemas de DNS intermitentes (EAI_AGAIN)
 RUN for i in 1 2 3 4 5; do \
         yarn config set network-timeout 600000 && \
         yarn config set network-concurrency 1 && \
         yarn config set registry "https://registry.npmjs.org/" && \
-        yarn install --frozen-lockfile && \
+        yarn install && \
         break || sleep 10; \
     done
 
 # Copiar o código fonte (depois das dependências para melhor cache)
+# Isso incluirá yarn.lock se estiver no contexto
 COPY . .
+
+# Se yarn.lock foi copiado, reinstalar com --frozen-lockfile para garantir consistência
+RUN if [ -f yarn.lock ] && [ -s yarn.lock ]; then \
+        echo "yarn.lock encontrado, reinstalando com --frozen-lockfile para garantir consistência"; \
+        for i in 1 2 3 4 5; do \
+            yarn config set network-timeout 600000 && \
+            yarn config set network-concurrency 1 && \
+            yarn config set registry "https://registry.npmjs.org/" && \
+            yarn install --frozen-lockfile && \
+            break || sleep 10; \
+        done; \
+    fi
 
 # Compilar TypeScript (Comando do package.json: tsc)
 RUN yarn build
@@ -79,15 +89,18 @@ RUN for i in 1 2 3 4 5; do \
     done
 
 # Copiar arquivos de dependências e instalar apenas dependências de produção
-COPY --from=builder --chown=nodejs:nodejs /app/package.json /app/yarn.lock ./
+# Nota: yarn.lock pode não estar disponível no contexto Git, então instalamos sem --frozen-lockfile
+# As versões corretas já foram instaladas no estágio builder
+COPY --from=builder --chown=nodejs:nodejs /app/package.json ./
 
 # Configurar Yarn para tolerar instabilidade de rede (timeout de 10 minutos)
 # Com retry para lidar com problemas de DNS intermitentes (EAI_AGAIN)
+# Instalar dependências de produção (sem --frozen-lockfile pois yarn.lock pode não estar disponível)
 RUN for i in 1 2 3 4 5; do \
         yarn config set network-timeout 600000 && \
         yarn config set network-concurrency 1 && \
         yarn config set registry "https://registry.npmjs.org/" && \
-        yarn install --production --frozen-lockfile && \
+        yarn install --production && \
         yarn cache clean && \
         break || sleep 10; \
     done && \
