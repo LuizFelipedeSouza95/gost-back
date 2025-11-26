@@ -8,7 +8,10 @@ export const sessionConfig: session.SessionOptions = {
     secure: process.env.NODE_ENV === 'production', // HTTPS apenas em produção
     httpOnly: true, // Previne acesso via JavaScript
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
-    sameSite: 'lax', // Proteção CSRF
+    // Para cross-origin com credentials, precisa ser 'none' quando secure é true
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    // Adiciona domínio explícito se necessário (deixe undefined para funcionar em todos os domínios)
+    domain: undefined, // undefined permite cookies em qualquer domínio
   },
   name: 'gost.session', // Nome customizado do cookie
 };
