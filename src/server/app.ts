@@ -104,6 +104,7 @@ export function createApp(orm: MikroORM) {
   const sessionMiddleware = session(sessionConfig) as unknown as express.RequestHandler;
   
   app.use((req, res, next) => {
+    const cookies = req.headers.cookie?.split(';').filter(c => c.trim().startsWith('gost.session=')) || [];
     sessionMiddleware(req, res, () => {
       if (req.path === '/api/auth/me' || req.path.includes('/api/auth/')) {
         logger.info({
@@ -112,7 +113,9 @@ export function createApp(orm: MikroORM) {
           sessionId: req.session?.id,
           hasUserId: !!req.session?.userId,
           hasUser: !!req.session?.user,
-          cookie: req.headers.cookie?.substring(0, 100),
+          cookieCount: cookies.length,
+          cookies: cookies.map(c => c.substring(0, 50)),
+          sessionKeys: req.session ? Object.keys(req.session) : [],
         }, '🔍 [Session Middleware] Sessão após middleware');
       }
       next();

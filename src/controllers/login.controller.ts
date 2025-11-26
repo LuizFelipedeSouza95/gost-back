@@ -152,9 +152,20 @@ export class LoginController {
                     }, '✅ Sessão salva com sucesso');
                     
                     const redirectUrl = `${frontendUrl}?auth=success&sessionId=${req.sessionID}`;
+                    
+                    res.cookie('gost.session', req.sessionID, {
+                        maxAge: 7 * 24 * 60 * 60 * 1000,
+                        httpOnly: true,
+                        secure: process.env.NODE_ENV === 'production',
+                        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+                        domain: process.env.NODE_ENV === 'production' ? '.gosttactical.com.br' : undefined,
+                        path: '/',
+                    });
+                    
                     logger.info({
                         redirectUrl,
                         sessionId: req.sessionID,
+                        userId: req.session.userId,
                         cookieConfig: {
                             name: 'gost.session',
                             domain: req.session.cookie.domain,
@@ -237,14 +248,17 @@ export class LoginController {
             res.setHeader('Access-Control-Allow-Headers', '*');
             res.setHeader('Access-Control-Expose-Headers', '*');
 
-            const cookieValue = req.headers.cookie?.split(';').find(c => c.trim().startsWith('gost.session='));
-            const sessionIdFromCookie = cookieValue?.split('=')[1];
+            const allCookies = req.headers.cookie?.split(';').filter(c => c.trim().startsWith('gost.session=')) || [];
+            const cookieValue = allCookies[0]?.split('=')[1];
+            const sessionIdFromCookie = cookieValue;
             
             logger.info({
                 hasSession: !!req.session,
                 sessionId: req.session?.id,
                 sessionID: req.sessionID,
                 sessionIdFromCookie: sessionIdFromCookie?.substring(0, 50),
+                cookieCount: allCookies.length,
+                allCookies: allCookies.map(c => c.substring(0, 50)),
                 hasUserId: !!req.session?.userId,
                 hasUser: !!req.session?.user,
                 sessionData: req.session ? {
@@ -252,8 +266,9 @@ export class LoginController {
                     userEmail: req.session.user?.email,
                     userRoles: req.session.user?.roles,
                 } : null,
+                sessionKeys: req.session ? Object.keys(req.session) : [],
                 cookies: req.headers.cookie ? 'presente' : 'ausente',
-                cookieHeader: req.headers.cookie?.substring(0, 200),
+                cookieHeader: req.headers.cookie?.substring(0, 300),
                 origin: req.headers.origin,
                 referer: req.headers.referer,
             }, '🔍 Verificando sessão em /api/auth/me');
