@@ -19,7 +19,9 @@ export const notFoundHandler = (
   
   // Trata OPTIONS mesmo em 404
   if (req.method === 'OPTIONS') {
-    return res.status(204).end();
+    res.status(204);
+    res.end();
+    return;
   }
 
   res.status(404).json({
