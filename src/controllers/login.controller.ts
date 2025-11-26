@@ -86,6 +86,12 @@ export class LoginController {
             console.log('✅ Processando callback do Google com código:', code.substring(0, 20) + '...');
             const result = await this.loginService.handleGoogleCallback(code);
 
+            console.log('👤 Dados do usuário obtidos:', {
+                id: result.user.id,
+                email: result.user.email,
+                name: result.user.name,
+            });
+
             req.session.userId = result.user.id;
             req.session.user = {
                 id: result.user.id,
@@ -96,16 +102,38 @@ export class LoginController {
             };
 
             const frontendUrl = this.getFrontendUrl(req);
+            console.log('💾 Salvando sessão antes do redirect...', {
+                sessionId: req.sessionID,
+                userId: req.session.userId,
+                frontendUrl,
+            });
+
             req.session.touch();
             
-            req.session.save((saveErr) => {
-                if (saveErr) {
-                    console.error('❌ Erro ao salvar sessão:', saveErr);
-                    return res.redirect(frontendUrl);
-                }
-                console.log('✅ Login realizado com sucesso, redirecionando para:', frontendUrl);
-                res.redirect(frontendUrl);
+            await new Promise<void>((resolve, reject) => {
+                req.session.save((saveErr) => {
+                    if (saveErr) {
+                        console.error('❌ Erro ao salvar sessão:', saveErr);
+                        reject(saveErr);
+                        return;
+                    }
+                    console.log('✅ Sessão salva com sucesso!', {
+                        sessionId: req.sessionID,
+                        userId: req.session.userId,
+                        cookieConfig: {
+                            secure: req.session.cookie.secure,
+                            sameSite: req.session.cookie.sameSite,
+                            domain: req.session.cookie.domain,
+                            path: req.session.cookie.path,
+                        },
+                    });
+                    resolve();
+                });
             });
+
+            const redirectUrl = `${frontendUrl}?auth=success&sessionId=${req.sessionID}`;
+            console.log('🔄 Redirecionando para:', redirectUrl);
+            res.redirect(redirectUrl);
         } catch (error: any) {
             console.error('❌ Erro no callback do Google:', {
                 message: error.message,
@@ -174,12 +202,27 @@ export class LoginController {
             res.setHeader('Access-Control-Allow-Headers', '*');
             res.setHeader('Access-Control-Expose-Headers', '*');
 
+            console.log('🔍 Verificando sessão em /api/auth/me:', {
+                hasSession: !!req.session,
+                sessionId: req.session?.id,
+                hasUserId: !!req.session?.userId,
+                hasUser: !!req.session?.user,
+                cookies: req.headers.cookie ? 'presente' : 'ausente',
+                cookieHeader: req.headers.cookie?.substring(0, 50),
+            });
+
             if (!req.session || !req.session.user) {
+                console.warn('⚠️ Sessão não encontrada ou usuário não autenticado');
                 return res.status(401).json({
                     success: false,
                     message: 'Não autenticado',
                 });
             }
+
+            console.log('✅ Usuário autenticado encontrado:', {
+                id: req.session.user.id,
+                email: req.session.user.email,
+            });
 
             return res.status(200).json({
                 success: true,
