@@ -35,5 +35,11 @@ export class Equipe extends BaseEntity {
 
   @Property({ type: 'text', nullable: true })
   estado?: string | null;
+
+  @Property({ type: 'text', nullable: true })
+  instagram_url?: string | null;
+
+  @Property({ type: 'text', nullable: true })
+  whatsapp_url?: string | null;
 }
 

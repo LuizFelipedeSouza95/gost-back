@@ -51,7 +51,7 @@ export class EquipeController {
         return res.status(500).json({ success: false, message: 'EntityManager não disponível' });
       }
 
-      const { nome, significado_nome, objetivo, data_criacao, descricao, logo_url, email, telefone, endereco, cidade, estado } = req.body;
+      const { nome, significado_nome, objetivo, data_criacao, descricao, logo_url, email, telefone, endereco, cidade, estado, instagram_url, whatsapp_url } = req.body;
 
       // Verifica se já existe uma equipe
       const equipes = await em.find(Equipe, {}, { orderBy: { createdAt: 'DESC' }, limit: 1 });
@@ -70,6 +70,8 @@ export class EquipeController {
         equipe.endereco = endereco !== undefined ? endereco : equipe.endereco;
         equipe.cidade = cidade !== undefined ? cidade : equipe.cidade;
         equipe.estado = estado !== undefined ? estado : equipe.estado;
+        equipe.instagram_url = instagram_url !== undefined ? instagram_url : equipe.instagram_url;
+        equipe.whatsapp_url = whatsapp_url !== undefined ? whatsapp_url : equipe.whatsapp_url;
 
         await em.persistAndFlush(equipe);
       } else {
@@ -86,6 +88,8 @@ export class EquipeController {
           endereco,
           cidade,
           estado,
+          instagram_url,
+          whatsapp_url,
         } as any);
 
         await em.persistAndFlush(equipe);
