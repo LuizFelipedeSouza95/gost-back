@@ -21,6 +21,7 @@ RUN for i in 1 2 3 4 5; do \
     done
 
 # Copiar arquivos de dependências
+# yarn.lock é necessário para builds reproduzíveis
 COPY package.json yarn.lock ./
 
 # Configurar Yarn para tolerar instabilidade de rede (timeout de 10 minutos)
