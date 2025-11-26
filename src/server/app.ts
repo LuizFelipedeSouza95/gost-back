@@ -108,6 +108,22 @@ export function createApp(orm: MikroORM) {
   // Session middleware
   app.use(session(sessionConfig) as unknown as express.RequestHandler);
 
+  // Middleware para logar informações da sessão (apenas para debug)
+  app.use((req, res, next) => {
+    if (req.method !== 'OPTIONS' && req.path.startsWith('/api/auth')) {
+      console.log('🍪 [Session Debug]', {
+        path: req.path,
+        sessionId: req.session?.id,
+        hasSession: !!req.session,
+        hasUserId: !!req.session?.userId,
+        hasUser: !!req.session?.user,
+        cookieHeader: req.headers.cookie ? 'presente' : 'ausente',
+        cookieValue: req.headers.cookie?.includes('gost.session') ? 'gost.session presente' : 'gost.session ausente',
+      });
+    }
+    next();
+  });
+
   // Compression
   app.use(compression() as unknown as express.RequestHandler);
 

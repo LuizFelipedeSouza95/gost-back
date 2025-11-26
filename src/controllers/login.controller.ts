@@ -112,45 +112,55 @@ export class LoginController {
                 hasPicture: !!result.user.picture,
             });
 
-            // Salva dados do usuário na sessão
-            req.session.userId = result.user.id;
-            req.session.user = {
-                id: result.user.id,
-                email: result.user.email,
-                name: result.user.name || null,
-                picture: result.user.picture || null,
-                roles: result.user.roles,
-            };
-
-            console.log('💾 Salvando sessão...', {
-                sessionId: req.sessionID,
-                userId: req.session.userId,
-                hasUser: !!req.session.user,
-            });
-
-            // Salva a sessão antes de redirecionar
-            const frontendUrl = this.getFrontendUrl(req);
-            console.log('🔄 Redirecionando para:', frontendUrl);
-            console.log('🍪 Configuração do cookie:', {
-                secure: req.session.cookie.secure,
-                sameSite: req.session.cookie.sameSite,
-                httpOnly: req.session.cookie.httpOnly,
-                domain: req.session.cookie.domain,
-                path: req.session.cookie.path,
-            });
-            
-            req.session.save((err) => {
-                if (err) {
-                    console.error('❌ Erro ao salvar sessão:', err);
+            // Regenera a sessão para garantir segurança (evita session fixation)
+            req.session.regenerate((regenerateErr) => {
+                if (regenerateErr) {
+                    console.error('❌ Erro ao regenerar sessão:', regenerateErr);
+                    const frontendUrl = this.getFrontendUrl(req);
                     return res.redirect(frontendUrl);
                 }
 
-                console.log('✅ Sessão salva com sucesso!', {
+                // Salva dados do usuário na nova sessão
+                req.session.userId = result.user.id;
+                req.session.user = {
+                    id: result.user.id,
+                    email: result.user.email,
+                    name: result.user.name || null,
+                    picture: result.user.picture || null,
+                    roles: result.user.roles,
+                };
+
+                console.log('💾 Salvando sessão regenerada...', {
                     sessionId: req.sessionID,
                     userId: req.session.userId,
+                    hasUser: !!req.session.user,
                 });
+
+                // Salva a sessão antes de redirecionar
+                const frontendUrl = this.getFrontendUrl(req);
                 console.log('🔄 Redirecionando para:', frontendUrl);
-                res.redirect(frontendUrl);
+                console.log('🍪 Configuração do cookie:', {
+                    secure: req.session.cookie.secure,
+                    sameSite: req.session.cookie.sameSite,
+                    httpOnly: req.session.cookie.httpOnly,
+                    domain: req.session.cookie.domain,
+                    path: req.session.cookie.path,
+                });
+                
+                req.session.save((saveErr) => {
+                    if (saveErr) {
+                        console.error('❌ Erro ao salvar sessão:', saveErr);
+                        return res.redirect(frontendUrl);
+                    }
+
+                    console.log('✅ Sessão salva com sucesso!', {
+                        sessionId: req.sessionID,
+                        userId: req.session.userId,
+                        email: req.session.user?.email,
+                    });
+                    console.log('🔄 Redirecionando para:', frontendUrl);
+                    res.redirect(frontendUrl);
+                });
             });
         } catch (error: any) {
             console.error('❌ Erro no callback do Google:', error);
@@ -229,12 +239,27 @@ export class LoginController {
             res.setHeader('Access-Control-Allow-Headers', '*');
             res.setHeader('Access-Control-Expose-Headers', '*');
 
+            // Log para debug da sessão
+            console.log('🔍 [getCurrentUser] Verificando sessão:', {
+                hasSession: !!req.session,
+                sessionId: req.session?.id,
+                hasUserId: !!req.session?.userId,
+                hasUser: !!req.session?.user,
+                cookie: req.headers.cookie?.includes('gost.session') ? 'presente' : 'ausente',
+            });
+
             if (!req.session || !req.session.user) {
+                console.warn('⚠️ [getCurrentUser] Sessão inválida ou usuário não encontrado');
                 return res.status(401).json({
                     success: false,
                     message: 'Não autenticado',
                 });
             }
+
+            console.log('✅ [getCurrentUser] Usuário encontrado:', {
+                id: req.session.user.id,
+                email: req.session.user.email,
+            });
 
             return res.status(200).json({
                 success: true,
