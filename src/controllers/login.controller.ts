@@ -111,62 +111,50 @@ export class LoginController {
                 sessionId: req.sessionID,
                 userId: req.session.userId,
                 frontendUrl,
+                sessionData: {
+                    userId: req.session.userId,
+                    userEmail: req.session.user?.email,
+                },
             }, '💾 Salvando sessão antes do redirect');
 
             req.session.touch();
-            
-            await new Promise<void>((resolve, reject) => {
-                req.session.save((saveErr) => {
-                    if (saveErr) {
-                        logger.error({ err: saveErr }, '❌ Erro ao salvar sessão');
-                        reject(saveErr);
-                        return;
-                    }
-                    logger.info({
-                        sessionId: req.sessionID,
-                        userId: req.session.userId,
-                        userEmail: req.session.user?.email,
-                        userRoles: req.session.user?.roles,
-                        cookieConfig: {
-                            secure: req.session.cookie.secure,
-                            sameSite: req.session.cookie.sameSite,
-                            domain: req.session.cookie.domain,
-                            path: req.session.cookie.path,
-                        },
-                    }, '✅ Sessão salva com sucesso');
-                    
-                    req.session.reload((reloadErr) => {
-                        if (reloadErr) {
-                            logger.error({ err: reloadErr }, '❌ Erro ao recarregar sessão após salvar');
-                            resolve();
-                        } else {
-                            logger.info({
-                                sessionId: req.sessionID,
-                                userId: req.session.userId,
-                                hasUser: !!req.session.user,
-                            }, '✅ Sessão recarregada com sucesso após salvar');
-                            resolve();
-                        }
-                    });
-                });
+            req.session.save((saveErr) => {
+                if (saveErr) {
+                    logger.error({ err: saveErr }, '❌ Erro ao salvar sessão');
+                    const redirectUrl = `${frontendUrl}?error=session_save_failed`;
+                    return res.redirect(redirectUrl);
+                }
+                
+                logger.info({
+                    sessionId: req.sessionID,
+                    userId: req.session.userId,
+                    userEmail: req.session.user?.email,
+                    userRoles: req.session.user?.roles,
+                    cookieConfig: {
+                        secure: req.session.cookie.secure,
+                        sameSite: req.session.cookie.sameSite,
+                        domain: req.session.cookie.domain,
+                        path: req.session.cookie.path,
+                    },
+                }, '✅ Sessão salva com sucesso');
+                
+                const redirectUrl = `${frontendUrl}?auth=success&sessionId=${req.sessionID}`;
+                logger.info({
+                    redirectUrl,
+                    sessionId: req.sessionID,
+                    cookieConfig: {
+                        name: 'gost.session',
+                        domain: req.session.cookie.domain,
+                        secure: req.session.cookie.secure,
+                        sameSite: req.session.cookie.sameSite,
+                        httpOnly: req.session.cookie.httpOnly,
+                        path: req.session.cookie.path,
+                    },
+                    setCookieHeader: res.getHeader('Set-Cookie'),
+                }, '🔄 Redirecionando após autenticação');
+                
+                res.redirect(redirectUrl);
             });
-
-            const redirectUrl = `${frontendUrl}?auth=success&sessionId=${req.sessionID}`;
-            logger.info({
-                redirectUrl,
-                sessionId: req.sessionID,
-                cookieConfig: {
-                    name: 'gost.session',
-                    domain: req.session.cookie.domain,
-                    secure: req.session.cookie.secure,
-                    sameSite: req.session.cookie.sameSite,
-                    httpOnly: req.session.cookie.httpOnly,
-                    path: req.session.cookie.path,
-                },
-                setCookieHeader: res.getHeader('Set-Cookie'),
-            }, '🔄 Redirecionando após autenticação');
-            
-            res.redirect(redirectUrl);
         } catch (error: any) {
             console.error('❌ Erro no callback do Google:', {
                 message: error.message,
