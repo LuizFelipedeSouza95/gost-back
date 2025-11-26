@@ -120,6 +120,8 @@ export class LoginController {
                     console.log('✅ Sessão salva com sucesso!', {
                         sessionId: req.sessionID,
                         userId: req.session.userId,
+                        userEmail: req.session.user?.email,
+                        userRoles: req.session.user?.roles,
                         cookieConfig: {
                             secure: req.session.cookie.secure,
                             sameSite: req.session.cookie.sameSite,
@@ -127,7 +129,19 @@ export class LoginController {
                             path: req.session.cookie.path,
                         },
                     });
-                    resolve();
+                    
+                    req.session.reload((reloadErr) => {
+                        if (reloadErr) {
+                            console.error('❌ Erro ao recarregar sessão após salvar:', reloadErr);
+                        } else {
+                            console.log('✅ Sessão recarregada com sucesso após salvar:', {
+                                sessionId: req.sessionID,
+                                userId: req.session.userId,
+                                hasUser: !!req.session.user,
+                            });
+                        }
+                        resolve();
+                    });
                 });
             });
 
@@ -135,11 +149,16 @@ export class LoginController {
             console.log('🔄 Redirecionando para:', redirectUrl);
             console.log('🍪 Configuração do cookie:', {
                 name: 'gost.session',
+                sessionId: req.sessionID,
                 domain: req.session.cookie.domain,
                 secure: req.session.cookie.secure,
                 sameSite: req.session.cookie.sameSite,
                 httpOnly: req.session.cookie.httpOnly,
                 path: req.session.cookie.path,
+            });
+            console.log('📋 Headers que serão enviados:', {
+                'Set-Cookie': res.getHeader('Set-Cookie'),
+                'Location': redirectUrl,
             });
             
             res.redirect(redirectUrl);
@@ -211,20 +230,45 @@ export class LoginController {
             res.setHeader('Access-Control-Allow-Headers', '*');
             res.setHeader('Access-Control-Expose-Headers', '*');
 
+            const cookieValue = req.headers.cookie?.split(';').find(c => c.trim().startsWith('gost.session='));
+            const sessionIdFromCookie = cookieValue?.split('=')[1];
+            
             console.log('🔍 Verificando sessão em /api/auth/me:', {
                 hasSession: !!req.session,
                 sessionId: req.session?.id,
+                sessionID: req.sessionID,
+                sessionIdFromCookie: sessionIdFromCookie?.substring(0, 50),
                 hasUserId: !!req.session?.userId,
                 hasUser: !!req.session?.user,
+                sessionData: req.session ? {
+                    userId: req.session.userId,
+                    userEmail: req.session.user?.email,
+                    userRoles: req.session.user?.roles,
+                } : null,
                 cookies: req.headers.cookie ? 'presente' : 'ausente',
-                cookieHeader: req.headers.cookie?.substring(0, 50),
+                cookieHeader: req.headers.cookie,
+                origin: req.headers.origin,
+                referer: req.headers.referer,
             });
 
-            if (!req.session || !req.session.user) {
-                console.warn('⚠️ Sessão não encontrada ou usuário não autenticado');
+            if (!req.session) {
+                console.warn('⚠️ req.session é null/undefined');
                 return res.status(401).json({
                     success: false,
-                    message: 'Não autenticado',
+                    message: 'Não autenticado - sessão não encontrada',
+                });
+            }
+
+            if (!req.session.user || !req.session.userId) {
+                console.warn('⚠️ Sessão encontrada mas sem dados do usuário:', {
+                    hasUserId: !!req.session.userId,
+                    hasUser: !!req.session.user,
+                    sessionId: req.session.id,
+                    sessionID: req.sessionID,
+                });
+                return res.status(401).json({
+                    success: false,
+                    message: 'Não autenticado - dados do usuário não encontrados na sessão',
                 });
             }
 

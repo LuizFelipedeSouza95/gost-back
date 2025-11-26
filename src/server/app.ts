@@ -99,7 +99,22 @@ export function createApp(orm: MikroORM) {
   }));
 
   const sessionConfig = createSessionConfig(sessionPool);
-  app.use(session(sessionConfig) as unknown as express.RequestHandler);
+  const sessionMiddleware = session(sessionConfig) as unknown as express.RequestHandler;
+  
+  app.use((req, res, next) => {
+    sessionMiddleware(req, res, () => {
+      if (req.path === '/api/auth/me' || req.path.includes('/api/auth/')) {
+        console.log('🔍 [Session Middleware] Sessão após middleware:', {
+          hasSession: !!req.session,
+          sessionID: req.sessionID,
+          sessionId: req.session?.id,
+          hasUserId: !!req.session?.userId,
+          hasUser: !!req.session?.user,
+        });
+      }
+      next();
+    });
+  });
 
   app.use(compression() as unknown as express.RequestHandler);
 
