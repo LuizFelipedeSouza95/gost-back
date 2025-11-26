@@ -50,25 +50,46 @@ export function getFrontendUrl(): string {
  * Usa a origem da requisição quando disponível, caso contrário usa configuração padrão
  */
 export function getFrontendUrlFromRequest(origin?: string, host?: string, protocol?: string): string {
-  // Prioridade: FRONTEND_URL > origin da requisição > inferência do host > padrão
+  // Prioridade: FRONTEND_URL > origin da requisição > inferência do host > padrão baseado em NODE_ENV
   if (process.env.FRONTEND_URL) {
+    console.log('📍 Usando FRONTEND_URL da variável de ambiente:', process.env.FRONTEND_URL);
     return process.env.FRONTEND_URL;
   }
 
   // Se houver origin e não for localhost, usa ela
   if (origin && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+    console.log('📍 Usando origin da requisição:', origin);
     return origin;
   }
 
   // Tenta inferir do host header (útil em redirects do Google OAuth)
   if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+    // Se o host é api.gosttactical.com.br, converte para www.gosttactical.com.br
     if (host.startsWith('api.')) {
       const frontendHost = host.replace('api.', 'www.');
-      const httpProtocol = protocol === 'https' ? 'https' : 'http';
-      return `${httpProtocol}://${frontendHost}`;
+      const httpProtocol = protocol === 'https' || isProduction ? 'https' : 'http';
+      const inferredUrl = `${httpProtocol}://${frontendHost}`;
+      console.log('📍 Inferindo URL do frontend do host:', inferredUrl);
+      return inferredUrl;
+    }
+    
+    // Se o host já é um domínio de produção (gosttactical.com.br), usa ele
+    if (host.includes('gosttactical.com.br')) {
+      const httpProtocol = protocol === 'https' || isProduction ? 'https' : 'http';
+      const inferredUrl = `${httpProtocol}://${host}`;
+      console.log('📍 Inferindo URL do frontend do domínio de produção:', inferredUrl);
+      return inferredUrl;
     }
   }
 
+  // Se estiver em produção e não conseguiu inferir, usa o padrão de produção
+  if (isProduction) {
+    console.log('📍 Usando URL padrão de produção:', 'https://www.gosttactical.com.br');
+    return 'https://www.gosttactical.com.br';
+  }
+
+  // Fallback para desenvolvimento
+  console.log('📍 Usando URL padrão de desenvolvimento:', 'http://localhost:3000');
   return getFrontendUrl();
 }
 

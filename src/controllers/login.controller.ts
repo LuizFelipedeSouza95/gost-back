@@ -15,7 +15,28 @@ export class LoginController {
     private getFrontendUrl(req: Request): string {
         const origin = req.headers.origin;
         const host = req.headers.host;
-        const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
+        
+        // Detecta protocolo: prioriza x-forwarded-proto (útil em proxies/load balancers)
+        // depois verifica req.protocol e finalmente usa https se estiver em produção
+        let protocol = 'http';
+        if (req.get('x-forwarded-proto') === 'https' || 
+            req.get('x-forwarded-proto') === 'https,http') {
+            protocol = 'https';
+        } else if (req.protocol === 'https') {
+            protocol = 'https';
+        } else if (process.env.NODE_ENV === 'production') {
+            // Em produção, assume HTTPS por padrão
+            protocol = 'https';
+        }
+        
+        console.log('🔍 Detectando URL do frontend:', {
+            origin,
+            host,
+            protocol,
+            'x-forwarded-proto': req.get('x-forwarded-proto'),
+            'req.protocol': req.protocol,
+            'NODE_ENV': process.env.NODE_ENV,
+        });
         
         return getFrontendUrlFromRequest(origin, host, protocol);
     }
@@ -103,6 +124,7 @@ export class LoginController {
 
             // Salva a sessão antes de redirecionar
             const frontendUrl = this.getFrontendUrl(req);
+            console.log('🔄 Redirecionando para:', frontendUrl);
             
             req.session.save((err) => {
                 if (err) {
@@ -110,6 +132,7 @@ export class LoginController {
                     return res.redirect(frontendUrl);
                 }
 
+                console.log('✅ Sessão salva, redirecionando para:', frontendUrl);
                 res.redirect(frontendUrl);
             });
         } catch (error: any) {
