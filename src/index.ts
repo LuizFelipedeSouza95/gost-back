@@ -220,11 +220,14 @@ async function bootstrap() {
     const app = createApp(orm);
 
     // Iniciar servidor com tratamento de erro de porta
-    const server = app.listen(PORT, () => {
-      logger.info(`🚀 Servidor rodando na porta ${PORT}`);
+    // IMPORTANTE: Escuta em 0.0.0.0 para aceitar conexões de qualquer interface de rede
+    const HOST = process.env.HOST || '0.0.0.0';
+    const server = app.listen(PORT, HOST, () => {
+      logger.info(`🚀 Servidor rodando em http://${HOST}:${PORT}`);
       logger.info(`📝 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-      // logger.info(`🔗 Healthcheck: http://localhost:${PORT}/health`);
-      // logger.info(`🌐 API: http://localhost:${PORT}/api`);
+      logger.info(`🔗 Healthcheck: http://localhost:${PORT}/health`);
+      logger.info(`🌐 API: http://localhost:${PORT}/api`);
+      logger.info(`✅ CORS configurado para aceitar todas as origens`);
     });
 
     // Tratamento de erro caso ainda ocorra EADDRINUSE

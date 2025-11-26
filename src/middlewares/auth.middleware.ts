@@ -18,6 +18,18 @@ declare module 'express-session' {
  * Middleware para verificar se o usuário está autenticado
  */
 export const requireAuth = (req: Request, res: Response, next: NextFunction): void => {
+  // Garantir headers CORS antes de verificar autenticação
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Expose-Headers', '*');
+
   if (req.session && req.session.userId && req.session.user) {
     next();
     return;

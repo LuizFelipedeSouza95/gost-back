@@ -11,6 +11,7 @@ import mainRoutes from '../routes/index.js';
 import { globalErrorHandler } from '../middlewares/errorHandler.middleware.js';
 import { notFoundHandler } from '../middlewares/notFound.middleware.js';
 import { requestIdMiddleware } from '../middlewares/requestId.middleware.js';
+import { ensureCorsHeaders } from '../middlewares/cors.middleware.js';
 import { sessionConfig } from '../config/session.js';
 import pino from 'pino';
 
@@ -28,54 +29,54 @@ export function createApp(orm: MikroORM) {
   const app = express();
 
   // CORS - ABSOLUTAMENTE PRIMEIRO (antes de QUALQUER outro middleware)
-  // Trata requisições OPTIONS imediatamente, sem passar por outros middlewares
+  // LIBERA TODAS AS ORIGENS SEM RESTRIÇÕES
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     
-    // Log para debug (apenas em desenvolvimento)
-    if (process.env.NODE_ENV === 'development') {
-      logger.debug({
-        method: req.method,
-        url: req.url,
-        origin: origin || 'no origin',
-      }, 'CORS middleware');
-    }
-    
-    // SEMPRE define os headers CORS, independente do método
+    // IMPORTANTE: Quando credentials: true, NÃO podemos usar '*'
+    // Precisamos usar a origem específica ou permitir todas usando uma função callback
+    // Se houver origin, usa ela; se não, permite qualquer origem (mas sem credentials)
     if (origin) {
       res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
     } else {
+      // Se não houver origin (ex: requisições do mesmo domínio), permite todas
       res.setHeader('Access-Control-Allow-Origin', '*');
+      // Sem credentials quando não há origin
     }
     
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // Permite TODOS os métodos HTTP
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+    
+    // Permite TODOS os headers
     res.setHeader('Access-Control-Allow-Headers', '*');
+    
+    // Expõe TODOS os headers na resposta
     res.setHeader('Access-Control-Expose-Headers', '*');
+    
+    // Cache do preflight por 24 horas
     res.setHeader('Access-Control-Max-Age', '86400');
     
     // Responde preflight OPTIONS IMEDIATAMENTE, sem passar por outros middlewares
     if (req.method === 'OPTIONS') {
-      if (process.env.NODE_ENV === 'development') {
-        logger.debug('Respondendo preflight OPTIONS');
-      }
       return res.status(204).end();
     }
     
     next();
   });
 
-  // Rota explícita para OPTIONS em todas as rotas (backup)
+  // Rota explícita para OPTIONS em TODAS as rotas (backup adicional)
   app.options('*', (req, res) => {
     const origin = req.headers.origin;
     if (origin) {
       res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
     } else {
       res.setHeader('Access-Control-Allow-Origin', '*');
     }
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
     res.setHeader('Access-Control-Allow-Headers', '*');
+    res.setHeader('Access-Control-Expose-Headers', '*');
     res.setHeader('Access-Control-Max-Age', '86400');
     return res.status(204).end();
   });
@@ -95,19 +96,22 @@ export function createApp(orm: MikroORM) {
   // MikroORM Request Context
   app.use((req, _res, next) => RequestContext.create(orm.em, next));
 
-  // CORS - Middleware do pacote (segunda camada)
+  // CORS - Middleware do pacote (segunda camada - LIBERA TUDO)
+  // IMPORTANTE: Quando credentials: true, não podemos usar origin: '*'
+  // Usamos uma função que sempre retorna true para permitir todas as origens
   app.use(cors({
     origin: (origin, callback) => {
-      // Permite todas as origens quando credentials é true
+      // SEMPRE permite qualquer origem (incluindo null/undefined)
+      // Isso permite que funcione tanto com credentials quanto sem
       callback(null, true);
     },
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
-    allowedHeaders: '*',
-    exposedHeaders: '*',
-    credentials: true,
-    maxAge: 86400,
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'], // Lista explícita de métodos
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'Accept', 'Origin', 'X-Requested-With', 'Cookie', 'Set-Cookie', '*'], // Permite todos os headers
+    exposedHeaders: ['*'], // Expõe todos os headers
+    credentials: true, // CRÍTICO: Permite credenciais (cookies, sessões)
+    maxAge: 86400, // Cache por 24 horas
+    preflightContinue: false, // Não continua para outros handlers após preflight
+    optionsSuccessStatus: 204, // Status code para OPTIONS bem-sucedido
   }));
 
   // Security middleware - configurado para NÃO interferir com CORS
@@ -150,6 +154,9 @@ export function createApp(orm: MikroORM) {
   });
   app.use(limiter);
 
+  // Middleware adicional de CORS para garantir que todas as rotas tenham headers CORS
+  app.use('/api', ensureCorsHeaders);
+  
   // Rotas da API
   app.use('/api', mainRoutes);
 

@@ -30,6 +30,13 @@ export class LoginController {
      */
     async googleAuth(req: Request, res: Response) {
         try {
+            // Garantir headers CORS
+            const origin = req.headers.origin;
+            if (origin) {
+                res.setHeader('Access-Control-Allow-Origin', origin);
+                res.setHeader('Access-Control-Allow-Credentials', 'true');
+            }
+            
             const authUrl = this.loginService.getGoogleAuthUrl();
             res.redirect(authUrl);
         } catch (error: any) {
@@ -46,6 +53,13 @@ export class LoginController {
      */
     async googleCallback(req: Request, res: Response) {
         try {
+            // Garantir headers CORS
+            const origin = req.headers.origin;
+            if (origin) {
+                res.setHeader('Access-Control-Allow-Origin', origin);
+                res.setHeader('Access-Control-Allow-Credentials', 'true');
+            }
+
             const { code } = req.query;
 
             if (!code || typeof code !== 'string') {
@@ -104,6 +118,18 @@ export class LoginController {
      */
     async googleSignIn(req: Request, res: Response) {
         try {
+            // Garantir headers CORS
+            const origin = req.headers.origin;
+            if (origin) {
+                res.setHeader('Access-Control-Allow-Origin', origin);
+                res.setHeader('Access-Control-Allow-Credentials', 'true');
+            } else {
+                res.setHeader('Access-Control-Allow-Origin', '*');
+            }
+            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+            res.setHeader('Access-Control-Allow-Headers', '*');
+            res.setHeader('Access-Control-Expose-Headers', '*');
+
             const { idToken } = req.body;
 
             if (!idToken) {
@@ -142,6 +168,18 @@ export class LoginController {
      */
     async getCurrentUser(req: Request, res: Response) {
         try {
+            // Garantir headers CORS
+            const origin = req.headers.origin;
+            if (origin) {
+                res.setHeader('Access-Control-Allow-Origin', origin);
+                res.setHeader('Access-Control-Allow-Credentials', 'true');
+            } else {
+                res.setHeader('Access-Control-Allow-Origin', '*');
+            }
+            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+            res.setHeader('Access-Control-Allow-Headers', '*');
+            res.setHeader('Access-Control-Expose-Headers', '*');
+
             if (!req.session || !req.session.user) {
                 return res.status(401).json({
                     success: false,
