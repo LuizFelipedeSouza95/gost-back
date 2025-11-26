@@ -98,29 +98,23 @@ export class LoginController {
             }, '👤 Dados do usuário obtidos');
 
             const oldSessionId = req.sessionID;
-            
-            req.session.userId = result.user.id;
-            req.session.user = {
-                id: result.user.id,
-                email: result.user.email,
-                name: result.user.name || null,
-                picture: result.user.picture || null,
-                roles: result.user.roles,
-            };
-
             const frontendUrl = this.getFrontendUrl(req);
+            
             logger.info({
                 oldSessionId,
-                newSessionId: req.sessionID,
-                userId: req.session.userId,
+                userId: result.user.id,
                 frontendUrl,
-                sessionData: {
-                    userId: req.session.userId,
-                    userEmail: req.session.user?.email,
-                },
-            }, '💾 Salvando sessão antes do redirect');
+            }, '💾 Regenerando sessão para autenticação');
 
-            req.session.touch();
+            const cookieDomain = process.env.NODE_ENV === 'production' ? '.gosttactical.com.br' : undefined;
+            res.clearCookie('gost.session', {
+                domain: cookieDomain,
+                path: '/',
+                secure: process.env.NODE_ENV === 'production',
+                httpOnly: true,
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            });
+
             req.session.regenerate((regenerateErr) => {
                 if (regenerateErr) {
                     logger.error({ err: regenerateErr }, '❌ Erro ao regenerar sessão');
