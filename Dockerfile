@@ -37,17 +37,27 @@ COPY tsconfig.json ./
 # IMPORTANTE: Instalar TODAS as dependências incluindo devDependencies para compilar TypeScript
 # Configurar Yarn para tolerar instabilidade de rede (timeout de 10 minutos)
 # Com retry para lidar com problemas de DNS intermitentes (EAI_AGAIN)
-RUN for i in 1 2 3 4 5; do \
-        yarn config set network-timeout 600000 && \
-        yarn config set network-concurrency 1 && \
-        yarn config set registry "https://registry.npmjs.org/" && \
-        yarn install --production=false && \
-        break || sleep 10; \
-    done
+RUN echo "📦 Instalando dependências inicialmente..." && \
+    yarn config set network-timeout 600000 && \
+    yarn config set network-concurrency 1 && \
+    yarn config set registry "https://registry.npmjs.org/" && \
+    yarn install --production=false || (echo "❌ ERRO: yarn install inicial falhou!" && exit 1) && \
+    echo "✅ Verificando instalação inicial..." && \
+    test -d node_modules || (echo "❌ ERRO: node_modules não foi criado!" && exit 1) && \
+    echo "✅ Dependências iniciais instaladas"
 
 # Copiar o código fonte (depois das dependências para melhor cache)
 # Isso incluirá yarn.lock se estiver no contexto
+# IMPORTANTE: node_modules não será copiado devido ao .dockerignore
 COPY . .
+
+# Verificar se node_modules ainda existe após COPY (não deveria ser afetado)
+RUN echo "🔍 Verificando node_modules após COPY..." && \
+    if [ ! -d node_modules ]; then \
+        echo "⚠️  node_modules não existe após COPY, será reinstalado"; \
+    else \
+        echo "✅ node_modules ainda existe após COPY"; \
+    fi
 
 # Verificar se os arquivos necessários foram copiados
 RUN echo "📁 Verificando arquivos copiados..." && \
@@ -61,33 +71,32 @@ RUN echo "📁 Verificando arquivos copiados..." && \
 # IMPORTANTE: Instalar TODAS as dependências (incluindo devDependencies) para compilar TypeScript
 # Usa --frozen-lockfile se yarn.lock existir, senão instala normalmente
 RUN echo "📦 Reinstalando dependências após copiar arquivos..." && \
+    echo "📋 Verificando se yarn.lock existe..." && \
+    (ls -la yarn.lock && echo "✅ yarn.lock encontrado") || echo "⚠️  yarn.lock não encontrado" && \
+    yarn config set network-timeout 600000 && \
+    yarn config set network-concurrency 1 && \
+    yarn config set registry "https://registry.npmjs.org/" && \
     if [ -f yarn.lock ] && [ -s yarn.lock ]; then \
-        echo "yarn.lock encontrado, usando --frozen-lockfile"; \
-        for i in 1 2 3 4 5; do \
-            yarn config set network-timeout 600000 && \
-            yarn config set network-concurrency 1 && \
-            yarn config set registry "https://registry.npmjs.org/" && \
-            yarn install --frozen-lockfile --production=false && \
-            break || sleep 10; \
-        done; \
+        echo "✅ Instalando com --frozen-lockfile"; \
+        yarn install --frozen-lockfile --production=false || (echo "❌ ERRO: yarn install falhou!" && exit 1); \
     else \
-        echo "yarn.lock não encontrado, instalando normalmente"; \
-        for i in 1 2 3 4 5; do \
-            yarn config set network-timeout 600000 && \
-            yarn config set network-concurrency 1 && \
-            yarn config set registry "https://registry.npmjs.org/" && \
-            yarn install --production=false && \
-            break || sleep 10; \
-        done; \
+        echo "⚠️  Instalando sem --frozen-lockfile"; \
+        yarn install --production=false || (echo "❌ ERRO: yarn install falhou!" && exit 1); \
     fi && \
-    echo "✅ Dependências instaladas"
+    echo "✅ Verificando se node_modules foi criado..." && \
+    test -d node_modules || (echo "❌ ERRO: node_modules não foi criado após yarn install!" && exit 1) && \
+    echo "✅ node_modules existe" && \
+    echo "📊 Tamanho do node_modules: $(du -sh node_modules | cut -f1)" && \
+    echo "✅ Dependências instaladas com sucesso"
 
 # Verificar se TypeScript foi instalado corretamente
 RUN echo "🔍 Verificando instalação do TypeScript..." && \
-    ls -la node_modules/.bin/tsc || echo "⚠️  tsc não encontrado em node_modules/.bin/" && \
-    which tsc || echo "⚠️  tsc não encontrado no PATH" && \
-    yarn tsc --version || echo "⚠️  yarn tsc não funciona" && \
-    echo "✅ Verificação concluída"
+    test -d node_modules || (echo "❌ ERRO CRÍTICO: node_modules não existe!" && exit 1) && \
+    test -d node_modules/.bin || (echo "❌ ERRO: node_modules/.bin não existe!" && exit 1) && \
+    ls -la node_modules/.bin/tsc || (echo "❌ ERRO: tsc não encontrado em node_modules/.bin/" && ls -la node_modules/.bin/ | head -10 && exit 1) && \
+    echo "✅ tsc encontrado em node_modules/.bin/" && \
+    yarn tsc --version || (echo "❌ ERRO: yarn tsc não funciona" && exit 1) && \
+    echo "✅ TypeScript instalado corretamente: $(yarn tsc --version)"
 
 # Compilar TypeScript usando yarn (que garante que o PATH está correto)
 RUN echo "🔨 Compilando TypeScript..." && \
