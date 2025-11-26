@@ -29,8 +29,9 @@ RUN for i in 1 2 3 4 5; do \
         break || sleep 15; \
     done
 
-# Copiar primeiro package.json para melhor cache de layers
+# Copiar primeiro package.json e tsconfig.json para melhor cache de layers
 COPY package.json ./
+COPY tsconfig.json ./
 
 # Instalar dependências inicialmente (sem --frozen-lockfile caso yarn.lock não exista)
 # Configurar Yarn para tolerar instabilidade de rede (timeout de 10 minutos)
@@ -47,6 +48,14 @@ RUN for i in 1 2 3 4 5; do \
 # Isso incluirá yarn.lock se estiver no contexto
 COPY . .
 
+# Verificar se os arquivos necessários foram copiados
+RUN echo "📁 Verificando arquivos copiados..." && \
+    ls -la /app/ && \
+    test -f /app/tsconfig.json || (echo "❌ Erro: tsconfig.json não encontrado!" && exit 1) && \
+    test -d /app/src || (echo "❌ Erro: Diretório src não encontrado!" && exit 1) && \
+    test -f /app/src/index.ts || (echo "❌ Erro: src/index.ts não encontrado!" && exit 1) && \
+    echo "✅ Arquivos necessários encontrados"
+
 # Se yarn.lock foi copiado, reinstalar com --frozen-lockfile para garantir consistência
 RUN if [ -f yarn.lock ] && [ -s yarn.lock ]; then \
         echo "yarn.lock encontrado, reinstalando com --frozen-lockfile para garantir consistência"; \
@@ -60,7 +69,16 @@ RUN if [ -f yarn.lock ] && [ -s yarn.lock ]; then \
     fi
 
 # Compilar TypeScript (Comando do package.json: tsc)
-RUN yarn build
+RUN echo "🔨 Compilando TypeScript..." && \
+    yarn build || (echo "❌ Erro ao compilar TypeScript!" && echo "📋 Conteúdo do diretório atual:" && ls -la /app/ && echo "📋 Conteúdo do src:" && ls -la /app/src/ && exit 1) && \
+    echo "✅ Build concluído"
+
+# Verificar se o build foi bem-sucedido
+RUN echo "🔍 Verificando resultado do build..." && \
+    ls -la /app/dist/ || (echo "❌ Erro: Diretório dist não foi criado!" && echo "📋 Conteúdo do diretório /app:" && ls -la /app/ && exit 1) && \
+    test -f /app/dist/index.js || (echo "❌ Erro: dist/index.js não foi criado!" && echo "📋 Arquivos em dist:" && ls -la /app/dist/ || echo "Diretório dist não existe" && exit 1) && \
+    echo "✅ Build concluído com sucesso. Arquivos em dist:" && \
+    ls -la /app/dist/ | head -20
 
 # ==================================================
 # Estágio 2: Produção (Execução)
@@ -109,7 +127,12 @@ RUN for i in 1 2 3 4 5; do \
     rm -rf /var/cache/apk/*
 
 # Copiar arquivos compilados (dist) com ownership correto
+# Verificar se o diretório dist existe no builder antes de copiar
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+
+# Verificar se o arquivo foi copiado corretamente
+RUN test -f /app/dist/index.js || (echo "❌ Erro: dist/index.js não foi copiado!" && ls -la /app/ && exit 1)
+RUN echo "✅ Arquivos copiados com sucesso:" && ls -la /app/dist/ | head -10
 
 # Copiar arquivos de configuração necessários
 COPY --from=builder --chown=nodejs:nodejs /app/mikro-orm.config.ts ./
@@ -133,5 +156,11 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
+# Verificar se o arquivo existe antes de iniciar
+RUN echo "🔍 Verificação final antes de iniciar:" && \
+    test -f /app/dist/index.js || (echo "❌ ERRO CRÍTICO: dist/index.js não existe!" && ls -la /app/ && ls -la /app/dist/ 2>/dev/null || echo "Diretório dist não existe" && exit 1) && \
+    echo "✅ Arquivo dist/index.js encontrado"
+
 # Comando para iniciar a aplicação (do package.json: node dist/index.js)
+# Usa node diretamente pois package.json tem "type": "module"
 CMD ["node", "dist/index.js"]
