@@ -74,11 +74,12 @@ RUN echo "🔨 Compilando TypeScript..." && \
     echo "✅ Build concluído"
 
 # Verificar se o build foi bem-sucedido
+# O TypeScript mantém a estrutura de diretórios, então src/index.ts vira dist/src/index.js
 RUN echo "🔍 Verificando resultado do build..." && \
     ls -la /app/dist/ || (echo "❌ Erro: Diretório dist não foi criado!" && echo "📋 Conteúdo do diretório /app:" && ls -la /app/ && exit 1) && \
-    test -f /app/dist/index.js || (echo "❌ Erro: dist/index.js não foi criado!" && echo "📋 Arquivos em dist:" && ls -la /app/dist/ || echo "Diretório dist não existe" && exit 1) && \
-    echo "✅ Build concluído com sucesso. Arquivos em dist:" && \
-    ls -la /app/dist/ | head -20
+    test -f /app/dist/src/index.js || (echo "❌ Erro: dist/src/index.js não foi criado!" && echo "📋 Arquivos em dist:" && find /app/dist -name "*.js" -type f | head -20 && exit 1) && \
+    echo "✅ Build concluído com sucesso. Arquivo principal:" && \
+    ls -lh /app/dist/src/index.js
 
 # ==================================================
 # Estágio 2: Produção (Execução)
@@ -131,8 +132,9 @@ RUN for i in 1 2 3 4 5; do \
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
 # Verificar se o arquivo foi copiado corretamente
-RUN test -f /app/dist/index.js || (echo "❌ Erro: dist/index.js não foi copiado!" && ls -la /app/ && exit 1)
-RUN echo "✅ Arquivos copiados com sucesso:" && ls -la /app/dist/ | head -10
+# O arquivo está em dist/src/index.js (estrutura mantida pelo TypeScript)
+RUN test -f /app/dist/src/index.js || (echo "❌ Erro: dist/src/index.js não foi copiado!" && echo "📋 Conteúdo de dist:" && find /app/dist -type f -name "*.js" | head -20 && exit 1)
+RUN echo "✅ Arquivo principal copiado:" && ls -lh /app/dist/src/index.js
 
 # Copiar arquivos de configuração necessários
 COPY --from=builder --chown=nodejs:nodejs /app/mikro-orm.config.ts ./
@@ -158,9 +160,9 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 
 # Verificar se o arquivo existe antes de iniciar
 RUN echo "🔍 Verificação final antes de iniciar:" && \
-    test -f /app/dist/index.js || (echo "❌ ERRO CRÍTICO: dist/index.js não existe!" && ls -la /app/ && ls -la /app/dist/ 2>/dev/null || echo "Diretório dist não existe" && exit 1) && \
-    echo "✅ Arquivo dist/index.js encontrado"
+    test -f /app/dist/src/index.js || (echo "❌ ERRO CRÍTICO: dist/src/index.js não existe!" && find /app/dist -name "*.js" -type f | head -10 && exit 1) && \
+    echo "✅ Arquivo dist/src/index.js encontrado"
 
-# Comando para iniciar a aplicação (do package.json: node dist/index.js)
-# Usa node diretamente pois package.json tem "type": "module"
-CMD ["node", "dist/index.js"]
+# Comando para iniciar a aplicação
+# Como rootDir é ".", o arquivo está em dist/src/index.js
+CMD ["node", "dist/src/index.js"]
