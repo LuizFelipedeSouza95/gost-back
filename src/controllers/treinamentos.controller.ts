@@ -83,7 +83,7 @@ export class TreinamentosController {
         participantes: [],
         ativo: true,
         status: 'agendado',
-      });
+      } as any);
 
       await em.persistAndFlush(treinamento);
 

@@ -71,7 +71,7 @@ export class ParceirosController {
         tipo,
         ordem_exibicao: ordem_exibicao || 0,
         ativo: true,
-      });
+      } as any);
 
       await em.persistAndFlush(parceiro);
 

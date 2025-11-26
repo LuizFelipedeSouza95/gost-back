@@ -19,7 +19,8 @@ declare module 'express-session' {
  */
 export const requireAuth = (req: Request, res: Response, next: NextFunction): void => {
   if (req.session && req.session.userId && req.session.user) {
-    return next();
+    next();
+    return;
   }
 
   res.status(401).json({
@@ -43,19 +44,21 @@ export const optionalAuth = (req: Request, res: Response, next: NextFunction): v
 export const requireAdmin = (req: Request, res: Response, next: NextFunction): void => {
   // Primeiro verifica se está autenticado
   if (!req.session || !req.session.userId || !req.session.user) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       message: 'Não autenticado. Por favor, faça login.',
     });
+    return;
   }
 
   // Verifica se o usuário tem o role 'admin'
   const userRoles = req.session.user.roles || [];
   if (!userRoles.includes('admin')) {
-    return res.status(403).json({
+    res.status(403).json({
       success: false,
       message: 'Acesso negado. Apenas administradores podem realizar esta ação.',
     });
+    return;
   }
 
   next();
@@ -70,24 +73,27 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction): v
 export const requireAdminOrReadOnly = (req: Request, res: Response, next: NextFunction): void => {
   // Verifica se está autenticado
   if (!req.session || !req.session.userId || !req.session.user) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       message: 'Não autenticado. Por favor, faça login.',
     });
+    return;
   }
 
   // Se for GET, permite para qualquer usuário autenticado
   if (req.method === 'GET') {
-    return next();
+    next();
+    return;
   }
 
   // Para outros métodos (POST, PUT, DELETE, PATCH), exige admin
   const userRoles = req.session.user.roles || [];
   if (!userRoles.includes('admin')) {
-    return res.status(403).json({
+    res.status(403).json({
       success: false,
       message: 'Acesso negado. Apenas administradores podem realizar esta ação. Você pode apenas visualizar (GET) os dados.',
     });
+    return;
   }
 
   next();

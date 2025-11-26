@@ -62,7 +62,7 @@ export class FAQsController {
         ordem_exibicao: ordem_exibicao || 0,
         ativo: true,
         visualizacoes: 0,
-      });
+      } as any);
 
       await em.persistAndFlush(faq);
 

@@ -109,7 +109,7 @@ export class NoticiasController {
         publicado: true,
         data_publicacao: new Date(),
         visualizacoes: 0,
-      });
+      } as any);
 
       await em.persistAndFlush(noticia);
 
