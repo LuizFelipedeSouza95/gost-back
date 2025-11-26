@@ -1,6 +1,11 @@
 import { Request, Response } from 'express';
 import { LoginService } from '../services/login.service.js';
 import { getFrontendUrlFromRequest } from '../config/urls.js';
+import pino from 'pino';
+
+const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+});
 
 export class LoginController {
     private loginService: LoginService;
@@ -83,14 +88,14 @@ export class LoginController {
                 });
             }
 
-            console.log('✅ Processando callback do Google com código:', code.substring(0, 20) + '...');
+            logger.info({ code: code.substring(0, 20) }, '✅ Processando callback do Google');
             const result = await this.loginService.handleGoogleCallback(code);
 
-            console.log('👤 Dados do usuário obtidos:', {
+            logger.info({
                 id: result.user.id,
                 email: result.user.email,
                 name: result.user.name,
-            });
+            }, '👤 Dados do usuário obtidos');
 
             req.session.userId = result.user.id;
             req.session.user = {
@@ -102,22 +107,22 @@ export class LoginController {
             };
 
             const frontendUrl = this.getFrontendUrl(req);
-            console.log('💾 Salvando sessão antes do redirect...', {
+            logger.info({
                 sessionId: req.sessionID,
                 userId: req.session.userId,
                 frontendUrl,
-            });
+            }, '💾 Salvando sessão antes do redirect');
 
             req.session.touch();
             
             await new Promise<void>((resolve, reject) => {
                 req.session.save((saveErr) => {
                     if (saveErr) {
-                        console.error('❌ Erro ao salvar sessão:', saveErr);
+                        logger.error({ err: saveErr }, '❌ Erro ao salvar sessão');
                         reject(saveErr);
                         return;
                     }
-                    console.log('✅ Sessão salva com sucesso!', {
+                    logger.info({
                         sessionId: req.sessionID,
                         userId: req.session.userId,
                         userEmail: req.session.user?.email,
@@ -128,38 +133,38 @@ export class LoginController {
                             domain: req.session.cookie.domain,
                             path: req.session.cookie.path,
                         },
-                    });
+                    }, '✅ Sessão salva com sucesso');
                     
                     req.session.reload((reloadErr) => {
                         if (reloadErr) {
-                            console.error('❌ Erro ao recarregar sessão após salvar:', reloadErr);
+                            logger.error({ err: reloadErr }, '❌ Erro ao recarregar sessão após salvar');
+                            resolve();
                         } else {
-                            console.log('✅ Sessão recarregada com sucesso após salvar:', {
+                            logger.info({
                                 sessionId: req.sessionID,
                                 userId: req.session.userId,
                                 hasUser: !!req.session.user,
-                            });
+                            }, '✅ Sessão recarregada com sucesso após salvar');
+                            resolve();
                         }
-                        resolve();
                     });
                 });
             });
 
             const redirectUrl = `${frontendUrl}?auth=success&sessionId=${req.sessionID}`;
-            console.log('🔄 Redirecionando para:', redirectUrl);
-            console.log('🍪 Configuração do cookie:', {
-                name: 'gost.session',
+            logger.info({
+                redirectUrl,
                 sessionId: req.sessionID,
-                domain: req.session.cookie.domain,
-                secure: req.session.cookie.secure,
-                sameSite: req.session.cookie.sameSite,
-                httpOnly: req.session.cookie.httpOnly,
-                path: req.session.cookie.path,
-            });
-            console.log('📋 Headers que serão enviados:', {
-                'Set-Cookie': res.getHeader('Set-Cookie'),
-                'Location': redirectUrl,
-            });
+                cookieConfig: {
+                    name: 'gost.session',
+                    domain: req.session.cookie.domain,
+                    secure: req.session.cookie.secure,
+                    sameSite: req.session.cookie.sameSite,
+                    httpOnly: req.session.cookie.httpOnly,
+                    path: req.session.cookie.path,
+                },
+                setCookieHeader: res.getHeader('Set-Cookie'),
+            }, '🔄 Redirecionando após autenticação');
             
             res.redirect(redirectUrl);
         } catch (error: any) {
@@ -233,7 +238,7 @@ export class LoginController {
             const cookieValue = req.headers.cookie?.split(';').find(c => c.trim().startsWith('gost.session='));
             const sessionIdFromCookie = cookieValue?.split('=')[1];
             
-            console.log('🔍 Verificando sessão em /api/auth/me:', {
+            logger.info({
                 hasSession: !!req.session,
                 sessionId: req.session?.id,
                 sessionID: req.sessionID,
@@ -246,13 +251,13 @@ export class LoginController {
                     userRoles: req.session.user?.roles,
                 } : null,
                 cookies: req.headers.cookie ? 'presente' : 'ausente',
-                cookieHeader: req.headers.cookie,
+                cookieHeader: req.headers.cookie?.substring(0, 200),
                 origin: req.headers.origin,
                 referer: req.headers.referer,
-            });
+            }, '🔍 Verificando sessão em /api/auth/me');
 
             if (!req.session) {
-                console.warn('⚠️ req.session é null/undefined');
+                logger.warn('⚠️ req.session é null/undefined');
                 return res.status(401).json({
                     success: false,
                     message: 'Não autenticado - sessão não encontrada',
@@ -260,22 +265,23 @@ export class LoginController {
             }
 
             if (!req.session.user || !req.session.userId) {
-                console.warn('⚠️ Sessão encontrada mas sem dados do usuário:', {
+                logger.warn({
                     hasUserId: !!req.session.userId,
                     hasUser: !!req.session.user,
                     sessionId: req.session.id,
                     sessionID: req.sessionID,
-                });
+                    sessionKeys: Object.keys(req.session),
+                }, '⚠️ Sessão encontrada mas sem dados do usuário');
                 return res.status(401).json({
                     success: false,
                     message: 'Não autenticado - dados do usuário não encontrados na sessão',
                 });
             }
 
-            console.log('✅ Usuário autenticado encontrado:', {
+            logger.info({
                 id: req.session.user.id,
                 email: req.session.user.email,
-            });
+            }, '✅ Usuário autenticado encontrado');
 
             return res.status(200).json({
                 success: true,
