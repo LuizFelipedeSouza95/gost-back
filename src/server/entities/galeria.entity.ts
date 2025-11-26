@@ -33,5 +33,8 @@ export class Galeria extends BaseEntity {
 
   @Property({ type: 'text', nullable: true })
   categoria?: string | null; // Ex: "Jogos", "Treinamentos", "Eventos"
+
+  @Property({ type: 'text', nullable: true })
+  album?: string | null; // Nome do álbum para agrupar fotos
 }
 

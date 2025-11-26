@@ -8,4 +8,5 @@ export { Noticia } from './noticia.entity.js';
 export { Parceiro } from './parceiro.entity.js';
 export { Treinamento } from './treinamento.entity.js';
 export { FAQ } from './faq.entity.js';
+export { Recrutamento } from './recrutamento.entity.js';
 

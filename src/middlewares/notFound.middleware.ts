@@ -5,13 +5,22 @@ export const notFoundHandler = (
   res: Response,
   next: NextFunction
 ): void => {
-  // Garantir headers CORS mesmo em caso de 404 - LIBERA TUDO
+  // Garantir headers CORS mesmo em caso de 404
   const origin = req.headers.origin;
-  res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', '*');
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
   res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Access-Control-Expose-Headers', '*');
+  
+  // Trata OPTIONS mesmo em 404
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
 
   res.status(404).json({
     error: 'Not Found',

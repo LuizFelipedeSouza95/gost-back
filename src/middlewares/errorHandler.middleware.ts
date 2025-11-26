@@ -16,9 +16,13 @@ export const globalErrorHandler = (
 
   // Garantir headers CORS mesmo em caso de erro - LIBERA TUDO
   const origin = req.headers.origin;
-  res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', '*');
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
   res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Access-Control-Expose-Headers', '*');
 

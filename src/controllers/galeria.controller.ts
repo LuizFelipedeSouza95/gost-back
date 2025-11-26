@@ -27,13 +27,14 @@ export class GaleriaController {
         return res.status(500).json({ success: false, message: 'EntityManager não disponível' });
       }
 
-      const { jogo_id, categoria, is_operacao, limit: limitParam } = req.query;
+      const { jogo_id, categoria, is_operacao, album, limit: limitParam } = req.query;
       const limit = limitParam ? parseInt(limitParam as string) : undefined;
 
       const where: any = {};
       if (jogo_id) where.jogo = { id: jogo_id }; // Filtra pelo relacionamento usando o ID
       if (categoria) where.categoria = categoria;
       if (is_operacao !== undefined) where.is_operacao = is_operacao === 'true';
+      if (album) where.album = album;
 
       const imagens = await em.find(
         Galeria,
@@ -77,6 +78,7 @@ export class GaleriaController {
         nome_operacao,
         data_operacao,
         categoria,
+        album,
         imagem_url, // Para compatibilidade com upload direto de URL
       } = req.body;
 
@@ -123,6 +125,7 @@ export class GaleriaController {
         data_operacao: data_operacao ? new Date(data_operacao) : null,
         autor_id: sessionUser?.id || null,
         categoria: categoria || null,
+        album: album || null,
       } as any);
 
       await em.persistAndFlush(imagem);

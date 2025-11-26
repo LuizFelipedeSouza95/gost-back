@@ -22,6 +22,12 @@ export const ensureCorsHeaders = (req: Request, res: Response, next: NextFunctio
   res.setHeader('Access-Control-Expose-Headers', '*');
   res.setHeader('Access-Control-Max-Age', '86400');
   
+  // Trata requisições OPTIONS (preflight) antes de passar para outras rotas
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+  
   next();
 };
 

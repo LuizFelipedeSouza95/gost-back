@@ -85,6 +85,18 @@ export class UsuariosController {
    */
   async update(req: Request, res: Response) {
     try {
+      // Garantir headers CORS na resposta
+      const origin = req.headers.origin;
+      if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+      } else {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+      }
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+      res.setHeader('Access-Control-Allow-Headers', '*');
+      res.setHeader('Access-Control-Expose-Headers', '*');
+
       const em = RequestContext.getEntityManager();
       if (!em) {
         return res.status(500).json({ success: false, message: 'EntityManager não disponível' });
@@ -120,6 +132,8 @@ export class UsuariosController {
         'is_comandante_squad',
         'nome_squad_subordinado',
         'id_squad_subordinado',
+        'roles',
+        'active',
       ];
 
       allowedFields.forEach((field) => {
@@ -127,6 +141,20 @@ export class UsuariosController {
           (usuario as any)[field] = req.body[field];
         }
       });
+
+      // Log para debug em desenvolvimento
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📝 Atualizando usuário:', {
+          id,
+          camposAtualizados: allowedFields.filter(field => req.body[field] !== undefined),
+          dados: Object.keys(req.body).reduce((acc, key) => {
+            if (allowedFields.includes(key)) {
+              acc[key] = req.body[key];
+            }
+            return acc;
+          }, {} as any),
+        });
+      }
 
       await em.flush();
 

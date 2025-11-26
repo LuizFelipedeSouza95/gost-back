@@ -29,6 +29,13 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction): vo
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
   res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Access-Control-Expose-Headers', '*');
+  res.setHeader('Access-Control-Max-Age', '86400');
+
+  // Trata requisições OPTIONS (preflight) antes de verificar autenticação
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
 
   if (req.session && req.session.userId && req.session.user) {
     next();
@@ -54,6 +61,25 @@ export const optionalAuth = (req: Request, res: Response, next: NextFunction): v
  * Requer autenticação e role 'admin'
  */
 export const requireAdmin = (req: Request, res: Response, next: NextFunction): void => {
+  // Garantir headers CORS antes de qualquer verificação
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Expose-Headers', '*');
+  res.setHeader('Access-Control-Max-Age', '86400');
+
+  // Trata requisições OPTIONS (preflight) antes de verificar autenticação
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+
   // Primeiro verifica se está autenticado
   if (!req.session || !req.session.userId || !req.session.user) {
     res.status(401).json({
@@ -83,6 +109,25 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction): v
  * Se for GET, permite para qualquer usuário autenticado
  */
 export const requireAdminOrReadOnly = (req: Request, res: Response, next: NextFunction): void => {
+  // Garantir headers CORS antes de qualquer verificação
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Expose-Headers', '*');
+  res.setHeader('Access-Control-Max-Age', '86400');
+
+  // Trata requisições OPTIONS (preflight) antes de verificar autenticação
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+
   // Verifica se está autenticado
   if (!req.session || !req.session.userId || !req.session.user) {
     res.status(401).json({

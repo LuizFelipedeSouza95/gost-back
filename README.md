@@ -54,10 +54,70 @@ cp .env.example .env
 
 4. Edite o arquivo `.env` com suas configurações:
 ```env
+# Banco de dados
 DATABASE_URL=postgresql://usuario:senha@localhost:5432/gost_airsoft
-PORT=3000
+
+# Servidor
+PORT=3001
 NODE_ENV=development
+HOST=0.0.0.0
+
+# URLs (opcional - valores padrão serão usados se não definidos)
+BACKEND_URL=http://localhost:3001
+FRONTEND_URL=http://localhost:3000
+CORS_ORIGIN=http://localhost:3000
+
+# Google OAuth
+GOOGLE_CLIENT_ID=seu-client-id
+GOOGLE_CLIENT_SECRET=seu-client-secret
+GOOGLE_REDIRECT_URI=http://localhost:3001/api/auth/google/callback
+
+# Segurança
+SESSION_SECRET=seu-secret-key-aqui
+JWT_SECRET=seu-jwt-secret-aqui
+JWT_EXPIRES_IN=7d
+
+# Azure Storage (opcional)
+AZURE_STORAGE_CONNECTION_STRING=sua-connection-string
+AZURE_STORAGE_CONTAINER_NAME=galeria
+
+# Email SMTP (para envio de emails de recrutamento)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=seu-email@gmail.com
+SMTP_PASS=sua-senha-de-app
+SMTP_FROM=noreply@gost.com
+
+# Logging
+LOG_LEVEL=info
 ```
+
+**📧 Configuração de Email:** Veja o guia completo em [EMAIL_SETUP.md](./EMAIL_SETUP.md) para obter credenciais de diferentes provedores (Gmail, SendGrid, etc).
+
+### Variáveis de Ambiente - URLs
+
+O sistema usa uma configuração centralizada de URLs em `src/config/urls.ts`. As URLs são determinadas pela seguinte ordem de prioridade:
+
+**Backend URL:**
+- `BACKEND_URL` (prioridade máxima)
+- `API_URL` (alternativa)
+- Padrão: `http://localhost:3001` (dev) ou `https://api.gosttactical.com.br` (prod)
+
+**Frontend URL:**
+- `FRONTEND_URL` (prioridade máxima)
+- Origin da requisição HTTP (quando disponível)
+- Padrão: `http://localhost:3000` (dev) ou `https://www.gosttactical.com.br` (prod)
+
+**Google OAuth Redirect URI:**
+- `GOOGLE_REDIRECT_URI` (prioridade máxima)
+- Baseado em `BACKEND_URL` ou `API_URL`
+- Padrão: `{BACKEND_URL}/api/auth/google/callback`
+- **IMPORTANTE:** Deve apontar para o BACKEND, não para o frontend
+
+**CORS Origins:**
+- `CORS_ORIGIN` (separado por vírgulas)
+- Padrão: `http://localhost:3000` (dev) ou `https://www.gosttactical.com.br,https://gosttactical.com.br` (prod)
 
 ## 🏃 Executando o Projeto
 

@@ -1,7 +1,8 @@
 import { CorsOptions } from 'cors';
+import { getCorsOrigins } from './urls.js';
 
 export const corsOptions: CorsOptions = {
-  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+  origin: getCorsOrigins(),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],

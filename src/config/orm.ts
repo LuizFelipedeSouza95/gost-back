@@ -12,6 +12,7 @@ import { Treinamento } from '../server/entities/treinamento.entity.js';
 import { FAQ } from '../server/entities/faq.entity.js';
 import { Equipe } from '../server/entities/equipe.entity.js';
 import { Estatuto } from '../server/entities/estatuto.entity.js';
+import { Recrutamento } from '../server/entities/recrutamento.entity.js';
 
 const config: Options = {
   migrations: {
@@ -35,6 +36,7 @@ const config: Options = {
     FAQ,
     Equipe,
     Estatuto,
+    Recrutamento,
   ],
   metadataProvider: ReflectMetadataProvider,
   debug: process.env.NODE_ENV !== 'production',
