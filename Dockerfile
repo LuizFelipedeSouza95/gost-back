@@ -34,13 +34,14 @@ COPY package.json ./
 COPY tsconfig.json ./
 
 # Instalar dependências inicialmente (sem --frozen-lockfile caso yarn.lock não exista)
+# IMPORTANTE: Instalar TODAS as dependências incluindo devDependencies para compilar TypeScript
 # Configurar Yarn para tolerar instabilidade de rede (timeout de 10 minutos)
 # Com retry para lidar com problemas de DNS intermitentes (EAI_AGAIN)
 RUN for i in 1 2 3 4 5; do \
         yarn config set network-timeout 600000 && \
         yarn config set network-concurrency 1 && \
         yarn config set registry "https://registry.npmjs.org/" && \
-        yarn install && \
+        yarn install --production=false && \
         break || sleep 10; \
     done
 
@@ -56,21 +57,46 @@ RUN echo "📁 Verificando arquivos copiados..." && \
     test -f /app/src/index.ts || (echo "❌ Erro: src/index.ts não encontrado!" && exit 1) && \
     echo "✅ Arquivos necessários encontrados"
 
-# Se yarn.lock foi copiado, reinstalar com --frozen-lockfile para garantir consistência
-RUN if [ -f yarn.lock ] && [ -s yarn.lock ]; then \
-        echo "yarn.lock encontrado, reinstalando com --frozen-lockfile para garantir consistência"; \
+# Reinstalar dependências após copiar todos os arquivos
+# IMPORTANTE: Instalar TODAS as dependências (incluindo devDependencies) para compilar TypeScript
+# Usa --frozen-lockfile se yarn.lock existir, senão instala normalmente
+RUN echo "📦 Reinstalando dependências após copiar arquivos..." && \
+    if [ -f yarn.lock ] && [ -s yarn.lock ]; then \
+        echo "yarn.lock encontrado, usando --frozen-lockfile"; \
         for i in 1 2 3 4 5; do \
             yarn config set network-timeout 600000 && \
             yarn config set network-concurrency 1 && \
             yarn config set registry "https://registry.npmjs.org/" && \
-            yarn install --frozen-lockfile && \
+            yarn install --frozen-lockfile --production=false && \
             break || sleep 10; \
         done; \
-    fi
+    else \
+        echo "yarn.lock não encontrado, instalando normalmente"; \
+        for i in 1 2 3 4 5; do \
+            yarn config set network-timeout 600000 && \
+            yarn config set network-concurrency 1 && \
+            yarn config set registry "https://registry.npmjs.org/" && \
+            yarn install --production=false && \
+            break || sleep 10; \
+        done; \
+    fi && \
+    echo "✅ Dependências instaladas"
 
-# Compilar TypeScript (Comando do package.json: tsc)
+# Verificar se TypeScript foi instalado corretamente
+RUN echo "🔍 Verificando instalação do TypeScript..." && \
+    ls -la node_modules/.bin/tsc || echo "⚠️  tsc não encontrado em node_modules/.bin/" && \
+    which tsc || echo "⚠️  tsc não encontrado no PATH" && \
+    yarn tsc --version || echo "⚠️  yarn tsc não funciona" && \
+    echo "✅ Verificação concluída"
+
+# Compilar TypeScript usando yarn (que garante que o PATH está correto)
 RUN echo "🔨 Compilando TypeScript..." && \
-    yarn build || (echo "❌ Erro ao compilar TypeScript!" && echo "📋 Conteúdo do diretório atual:" && ls -la /app/ && echo "📋 Conteúdo do src:" && ls -la /app/src/ && exit 1) && \
+    yarn build || (echo "❌ Erro ao compilar TypeScript!" && \
+    echo "📋 Verificando node_modules:" && ls -la node_modules/.bin/ | grep tsc || echo "tsc não encontrado" && \
+    echo "📋 Conteúdo do diretório atual:" && ls -la /app/ && \
+    echo "📋 Conteúdo do src:" && ls -la /app/src/ && \
+    echo "📋 Verificando package.json:" && cat package.json | grep -A 5 '"build"' && \
+    exit 1) && \
     echo "✅ Build concluído"
 
 # Verificar se o build foi bem-sucedido
