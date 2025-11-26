@@ -1,4 +1,13 @@
 # ==================================================
+# Dockerfile para Backend GOST Airsoft
+# ==================================================
+# IMPORTANTE: Execute o build a partir do diretório BackEnd:
+#   docker build -t gost-airsoft-backend .
+# 
+# O contexto do build deve incluir package.json e yarn.lock
+# ==================================================
+
+# ==================================================
 # Estágio 1: Build (Compilação do TypeScript)
 # ==================================================
 FROM node:20-alpine AS builder
@@ -20,8 +29,10 @@ RUN for i in 1 2 3 4 5; do \
         break || sleep 15; \
     done
 
-# Copiar arquivos de dependências
-# yarn.lock é necessário para builds reproduzíveis
+# Copiar primeiro package.json e yarn.lock para melhor cache de layers
+# Se yarn.lock não estiver no contexto, o build falhará aqui
+# Certifique-se de executar: docker build -t gost-airsoft-backend .
+# a partir do diretório BackEnd que contém yarn.lock
 COPY package.json yarn.lock ./
 
 # Configurar Yarn para tolerar instabilidade de rede (timeout de 10 minutos)
@@ -35,7 +46,7 @@ RUN for i in 1 2 3 4 5; do \
         break || sleep 10; \
     done
 
-# Copiar o código fonte
+# Copiar o código fonte (depois das dependências para melhor cache)
 COPY . .
 
 # Compilar TypeScript (Comando do package.json: tsc)
