@@ -44,18 +44,15 @@ const config: Options = {
     const useSSL = process.env.DB_USE_SSL === 'true';
     const baseOptions: any = {
       connection: {
-        // Configurações de pool para melhor gerenciamento de conexões
-        max: 20, // máximo de conexões no pool (aumentado)
-        min: 2, // mínimo de conexões mantidas no pool
-        idleTimeoutMillis: 60000, // fecha conexões idle após 60s (aumentado)
-        connectionTimeoutMillis: 10000, // timeout ao conectar (aumentado para 10s)
-        // Keep-alive para manter conexões vivas (PostgreSQL)
+        max: 20,
+        min: 2,
+        idleTimeoutMillis: 60000,
+        connectionTimeoutMillis: 10000,
         keepAlive: true,
         keepAliveInitialDelayMillis: 10000,
       },
-      // Timeouts para queries
-      statement_timeout: 30000, // timeout para statements (30s)
-      query_timeout: 30000, // timeout para queries individuais (30s)
+      statement_timeout: 30000,
+      query_timeout: 30000,
     };
     if (useSSL) {
       baseOptions.connection.ssl = {

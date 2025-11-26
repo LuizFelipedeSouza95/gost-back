@@ -4,10 +4,6 @@ import { Usuario } from '../server/entities/usuarios.entity.js';
 import { getGoogleRedirectUri } from '../config/urls.js';
 
 const redirectUri = getGoogleRedirectUri();
-
-// Log da configuração para facilitar debug
-console.log('🔗 Google OAuth Redirect URI:', redirectUri);
-
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
@@ -15,9 +11,6 @@ const client = new OAuth2Client(
 );
 
 export class GoogleAuthService {
-  /**
-   * Gera a URL de autorização do Google
-   */
   getAuthUrl(): string {
     const scopes = [
       'https://www.googleapis.com/auth/userinfo.email',
@@ -31,9 +24,6 @@ export class GoogleAuthService {
     });
   }
 
-  /**
-   * Valida o token ID do Google e retorna os dados do usuário
-   */
   async verifyIdToken(idToken: string) {
     try {
       const ticket = await client.verifyIdToken({
@@ -57,9 +47,6 @@ export class GoogleAuthService {
     }
   }
 
-  /**
-   * Troca o código de autorização por tokens
-   */
   async getTokensFromCode(code: string) {
     try {
       const { tokens } = await client.getToken(code);
@@ -70,9 +57,6 @@ export class GoogleAuthService {
     }
   }
 
-  /**
-   * Obtém informações do usuário usando o token de acesso
-   */
   async getUserInfo(accessToken: string) {
     try {
       const response = await fetch(
@@ -89,9 +73,6 @@ export class GoogleAuthService {
     }
   }
 
-  /**
-   * Busca ou cria um usuário baseado nos dados do Google
-   */
   async findOrCreateUser(googleData: {
     googleId: string;
     email: string;
@@ -103,14 +84,12 @@ export class GoogleAuthService {
       throw new Error('EntityManager não disponível');
     }
 
-    // Busca usuário existente por googleId ou email
     let user = await em.findOne(Usuario, { googleId: googleData.googleId });
     if (!user) {
       user = await em.findOne(Usuario, { email: googleData.email });
     }
 
     if (user) {
-      // Atualiza dados do usuário existente
       if (!user.googleId) {
         user.googleId = googleData.googleId;
       }
@@ -123,7 +102,6 @@ export class GoogleAuthService {
       user.lastLogin = new Date();
       await em.flush();
     } else {
-      // Cria novo usuário
       user = em.create(Usuario, {
         googleId: googleData.googleId,
         email: googleData.email,

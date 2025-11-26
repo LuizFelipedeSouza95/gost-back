@@ -16,10 +16,7 @@ import recrutamentoRoutes from './recrutamento.routes.js';
 const router = Router();
 const loginController = new LoginController();
 
-// Login tradicional (se necessário)
 router.post('/login', loginController.handle.bind(loginController));
-
-// Rotas organizadas por módulo
 router.use('/auth', authRoutes);
 router.use('/usuarios', usuariosRoutes);
 router.use('/squads', squadsRoutes);
