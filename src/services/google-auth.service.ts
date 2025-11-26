@@ -19,6 +19,7 @@ export class GoogleAuthService {
     const scopes = [
       'https://www.googleapis.com/auth/userinfo.email',
       'https://www.googleapis.com/auth/userinfo.profile',
+      'openid',
     ];
 
     const authUrl = client.generateAuthUrl({
@@ -27,7 +28,8 @@ export class GoogleAuthService {
       prompt: 'consent',
     });
 
-    console.log('🔗 Google Auth URL gerada:', authUrl.substring(0, 100) + '...');
+    console.log('🔗 Google Auth URL gerada:', authUrl.substring(0, 150) + '...');
+    console.log('📍 Redirect URI configurado:', redirectUri);
     return authUrl;
   }
 
