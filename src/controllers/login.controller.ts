@@ -9,6 +9,49 @@ export class LoginController {
     }
 
     /**
+     * Determina a URL do frontend para redirecionamento
+     * Prioridade: 1. FRONTEND_URL env var, 2. Origin da requisição, 3. Host header inferido, 4. Inferência do ambiente
+     */
+    private getFrontendUrl(req: Request): string {
+        // 1. Prioridade máxima: variável de ambiente FRONTEND_URL
+        if (process.env.FRONTEND_URL) {
+            console.log('📍 Usando FRONTEND_URL da variável de ambiente:', process.env.FRONTEND_URL);
+            return process.env.FRONTEND_URL;
+        }
+
+        // 2. Usa o origin da requisição (mais confiável em produção)
+        const origin = req.headers.origin;
+        if (origin && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+            console.log('📍 Usando origin da requisição:', origin);
+            return origin;
+        }
+
+        // 3. Tenta inferir do host header (útil quando origin não está presente, como em redirects do Google)
+        const host = req.headers.host;
+        if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+            // Se o backend está em api.gosttactical.com.br, o frontend provavelmente está em www.gosttactical.com.br
+            if (host.startsWith('api.')) {
+                const frontendHost = host.replace('api.', 'www.');
+                const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
+                const frontendUrl = `${protocol}://${frontendHost}`;
+                console.log('📍 Inferindo frontend do host:', frontendUrl);
+                return frontendUrl;
+            }
+        }
+
+        // 4. Inferência baseada no ambiente
+        const isProduction = process.env.NODE_ENV === 'production';
+        if (isProduction) {
+            console.log('📍 Usando URL padrão de produção');
+            return 'https://www.gosttactical.com.br';
+        }
+
+        // 5. Fallback para desenvolvimento
+        console.log('📍 Usando URL de desenvolvimento');
+        return 'http://localhost:3000';
+    }
+
+    /**
      * Login tradicional (se necessário)
      */
     async handle(req: Request, res: Response) {
@@ -90,32 +133,24 @@ export class LoginController {
             };
 
             // Salva a sessão antes de redirecionar
+            const frontendUrl = this.getFrontendUrl(req);
+            console.log('🔗 Redirecionando para:', frontendUrl);
+            
             req.session.save((err) => {
                 if (err) {
                     console.error('❌ Erro ao salvar sessão:', err);
-                    // Em produção, usa FRONTEND_URL ou domínio padrão
-                    const isProduction = process.env.NODE_ENV === 'production';
-                    const frontendUrl = process.env.FRONTEND_URL || 
-                        (isProduction ? 'https://www.gosttactical.com.br' : 'http://localhost:3000');
                     // Redireciona para a URL base, o erro será tratado pelo frontend verificando a sessão
                     return res.redirect(frontendUrl);
                 }
 
                 console.log('✅ Sessão criada com sucesso');
-                // Em produção, usa FRONTEND_URL ou domínio padrão
-                const isProduction = process.env.NODE_ENV === 'production';
-                const frontendUrl = process.env.FRONTEND_URL || 
-                    (isProduction ? 'https://www.gosttactical.com.br' : 'http://localhost:3000');
                 // Redireciona para a URL base sem query parameters
                 res.redirect(frontendUrl);
             });
         } catch (error: any) {
             console.error('❌ Erro no callback do Google:', error);
             console.error('❌ Stack:', error.stack);
-            // Em produção, usa FRONTEND_URL ou domínio padrão
-            const isProduction = process.env.NODE_ENV === 'production';
-            const frontendUrl = process.env.FRONTEND_URL || 
-                (isProduction ? 'https://www.gosttactical.com.br' : 'http://localhost:3000');
+            const frontendUrl = this.getFrontendUrl(req);
             // Redireciona para a URL base, o erro será tratado pelo frontend verificando a sessão
             res.redirect(frontendUrl);
         }
