@@ -11,7 +11,6 @@ import mainRoutes from '../routes/index.js';
 import { globalErrorHandler } from '../middlewares/errorHandler.middleware.js';
 import { notFoundHandler } from '../middlewares/notFound.middleware.js';
 import { requestIdMiddleware } from '../middlewares/requestId.middleware.js';
-import { corsOptions } from '../config/cors.js';
 import { sessionConfig } from '../config/session.js';
 import pino from 'pino';
 
@@ -50,9 +49,13 @@ export function createApp(orm: MikroORM) {
   app.use(session(sessionConfig) as unknown as express.RequestHandler);
 
   // CORS (deve vir depois da sessão)
+  // Liberado para todas as origens
   app.use(cors({
-    ...corsOptions,
+    origin: true, // Permite todas as origens
     credentials: true, // Importante para cookies de sessão
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+    exposedHeaders: ['X-Request-Id'],
   }));
 
   // Compression
