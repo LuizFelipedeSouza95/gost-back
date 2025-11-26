@@ -27,11 +27,12 @@ router.options('*', handleOptions);
 router.options('/', handleOptions);
 router.options('/:id', handleOptions);
 
-// Exemplo de uso do middleware requireAdminOrReadOnly:
-// - GET permite para qualquer usuário autenticado
-// - POST/PUT/DELETE exige admin
-router.get('/', requireAuth, usuariosController.list.bind(usuariosController));
-router.get('/:id', requireAuth, usuariosController.getById.bind(usuariosController));
+// Rotas públicas (visualização de membros)
+// GET permite visualização pública para membros ativos
+router.get('/', usuariosController.list.bind(usuariosController));
+router.get('/:id', usuariosController.getById.bind(usuariosController));
+
+// Rotas protegidas (criação, atualização e exclusão requerem admin)
 router.post('/', requireAdminOrReadOnly, usuariosController.create.bind(usuariosController));
 router.put('/:id', requireAdminOrReadOnly, usuariosController.update.bind(usuariosController));
 router.delete('/:id', requireAdminOrReadOnly, usuariosController.delete.bind(usuariosController));
