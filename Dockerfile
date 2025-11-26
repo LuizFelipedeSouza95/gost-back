@@ -29,24 +29,24 @@ RUN for i in 1 2 3 4 5; do \
         break || sleep 15; \
     done
 
-# Copiar primeiro package.json, yarn.lock e tsconfig.json para melhor cache de layers
-COPY package.json ./
-COPY yarn.lock* ./
-COPY tsconfig.json ./
+# Copiar arquivos de configuração e dependências
+# IMPORTANTE: yarn.lock deve estar commitado no Git para builds reproduzíveis
+COPY package.json yarn.lock* tsconfig.json ./
 
-# Instalar dependências inicialmente
-# IMPORTANTE: Instalar TODAS as dependências incluindo devDependencies para compilar TypeScript
-# Configurar Yarn para tolerar instabilidade de rede (timeout de 10 minutos)
-RUN echo "📦 Instalando dependências inicialmente..." && \
+# Verificar arquivos copiados e instalar dependências
+RUN echo "📁 Verificando arquivos copiados..." && \
+    ls -la /app/ && \
+    echo "📦 Instalando dependências inicialmente..." && \
     yarn config set network-timeout 600000 && \
     yarn config set network-concurrency 1 && \
     yarn config set registry "https://registry.npmjs.org/" && \
     if [ -f yarn.lock ] && [ -s yarn.lock ]; then \
-        echo "✅ yarn.lock encontrado, instalando com --frozen-lockfile" && \
+        echo "✅ yarn.lock encontrado ($(wc -l < yarn.lock | tr -d ' ') linhas), instalando com --frozen-lockfile" && \
         yarn install --frozen-lockfile --production=false || (echo "❌ ERRO: yarn install inicial falhou!" && exit 1); \
     else \
-        echo "⚠️ yarn.lock não encontrado, instalando sem --frozen-lockfile" && \
-        yarn install --production=false || (echo "❌ ERRO: yarn install inicial falhou!" && exit 1); \
+        echo "⚠️ yarn.lock não encontrado no contexto do build" && \
+        echo "📋 Tentando instalar sem --frozen-lockfile (pode demorar mais)..." && \
+        yarn install --production=false || (echo "❌ ERRO: yarn install inicial falhou!" && echo "💡 Dica: Certifique-se de que yarn.lock está commitado no Git" && exit 1); \
     fi && \
     echo "✅ Verificando instalação inicial..." && \
     test -d node_modules || (echo "❌ ERRO: node_modules não foi criado!" && exit 1) && \

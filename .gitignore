@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-yarn.lock
+# yarn.lock deve ser versionado para builds reproduzíveis
 package-lock.json
 
 # Build output
