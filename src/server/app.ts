@@ -5,13 +5,14 @@ import pinoHttp from 'pino-http';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import session from 'express-session';
+import { Pool } from 'pg';
 import { RequestContext, MikroORM } from '@mikro-orm/core';
 import type { Request } from 'express';
 import mainRoutes from '../routes/index.js';
 import { globalErrorHandler } from '../middlewares/errorHandler.middleware.js';
 import { notFoundHandler } from '../middlewares/notFound.middleware.js';
 import { requestIdMiddleware } from '../middlewares/requestId.middleware.js';
-import { sessionConfig } from '../config/session.js';
+import { createSessionConfig } from '../config/session.js';
 import pino from 'pino';
 
 const logger = pino({
@@ -26,6 +27,22 @@ const logger = pino({
 
 export function createApp(orm: MikroORM) {
   const app = express();
+
+  // Cria pool PostgreSQL para sessões (separado do MikroORM)
+  // Isso permite que o connect-pg-simple gerencie suas próprias conexões
+  const databaseUrl = process.env.DATABASE_URL || process.env.GOST_DATABASE_URL;
+  const sessionPool = databaseUrl ? new Pool({
+    connectionString: databaseUrl,
+    max: 5, // Pool menor para sessões (não precisa de muitas conexões)
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  }) : undefined;
+
+  if (sessionPool) {
+    sessionPool.on('error', (err) => {
+      logger.error({ err }, 'Erro no pool de sessões PostgreSQL');
+    });
+  }
 
   // CORS - ABSOLUTAMENTE PRIMEIRO (antes de QUALQUER outro middleware)
   // Configuração permissiva para desenvolvimento e produção
@@ -105,7 +122,8 @@ export function createApp(orm: MikroORM) {
     crossOriginOpenerPolicy: false,
   }));
 
-  // Session middleware
+  // Session middleware com store persistente PostgreSQL
+  const sessionConfig = createSessionConfig(sessionPool);
   app.use(session(sessionConfig) as unknown as express.RequestHandler);
 
   // Middleware para logar informações da sessão (apenas para debug)
