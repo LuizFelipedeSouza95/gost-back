@@ -93,20 +93,29 @@ export class LoginController {
             req.session.save((err) => {
                 if (err) {
                     console.error('❌ Erro ao salvar sessão:', err);
-                    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+                    // Em produção, usa FRONTEND_URL ou domínio padrão
+                    const isProduction = process.env.NODE_ENV === 'production';
+                    const frontendUrl = process.env.FRONTEND_URL || 
+                        (isProduction ? 'https://www.gosttactical.com.br' : 'http://localhost:3000');
                     // Redireciona para a URL base, o erro será tratado pelo frontend verificando a sessão
                     return res.redirect(frontendUrl);
                 }
 
                 console.log('✅ Sessão criada com sucesso');
-                const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+                // Em produção, usa FRONTEND_URL ou domínio padrão
+                const isProduction = process.env.NODE_ENV === 'production';
+                const frontendUrl = process.env.FRONTEND_URL || 
+                    (isProduction ? 'https://www.gosttactical.com.br' : 'http://localhost:3000');
                 // Redireciona para a URL base sem query parameters
                 res.redirect(frontendUrl);
             });
         } catch (error: any) {
             console.error('❌ Erro no callback do Google:', error);
             console.error('❌ Stack:', error.stack);
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            // Em produção, usa FRONTEND_URL ou domínio padrão
+            const isProduction = process.env.NODE_ENV === 'production';
+            const frontendUrl = process.env.FRONTEND_URL || 
+                (isProduction ? 'https://www.gosttactical.com.br' : 'http://localhost:3000');
             // Redireciona para a URL base, o erro será tratado pelo frontend verificando a sessão
             res.redirect(frontendUrl);
         }

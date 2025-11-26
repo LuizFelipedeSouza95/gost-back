@@ -2,38 +2,40 @@ import { OAuth2Client } from 'google-auth-library';
 import { RequestContext } from '@mikro-orm/core';
 import { Usuario } from '../server/entities/usuarios.entity.js';
 
-// Constrói o redirect URI dinamicamente baseado na porta
+// Constrói o redirect URI dinamicamente baseado no ambiente
 // IMPORTANTE: Google OAuth NÃO aceita 0.0.0.0, apenas localhost ou domínios válidos
-// Por isso sempre usamos 'localhost' no redirect URI, mesmo que o servidor escute em 0.0.0.0
 const getRedirectUri = () => {
+  const isProduction = process.env.NODE_ENV === 'production';
   const port = process.env.PORT || 3001;
   
-  // Se GOOGLE_REDIRECT_URI estiver definido explicitamente, usa ele
+  // Se GOOGLE_REDIRECT_URI estiver definido explicitamente, usa ele (prioridade máxima)
   if (process.env.GOOGLE_REDIRECT_URI) {
     const configuredUri = process.env.GOOGLE_REDIRECT_URI;
-    const configuredPort = configuredUri.match(/:(\d+)/)?.[1];
     
-    // Valida se o URI está usando localhost (Google não aceita 0.0.0.0)
+    // Valida se o URI está usando 0.0.0.0 (Google não aceita)
     if (configuredUri.includes('0.0.0.0')) {
       console.error('❌ ERRO: GOOGLE_REDIRECT_URI não pode usar 0.0.0.0. Google OAuth só aceita localhost ou domínios válidos.');
       console.error('❌ Use localhost ou um domínio válido no GOOGLE_REDIRECT_URI');
-      // Força uso de localhost mesmo se estiver configurado errado
+      // Em produção, tenta usar API_URL ou BACKEND_URL
+      if (isProduction) {
+        const apiUrl = process.env.API_URL || process.env.BACKEND_URL || 'https://api.gosttactical.com.br';
+        return `${apiUrl}/api/auth/google/callback`;
+      }
       return `http://localhost:${port}/api/auth/google/callback`;
     }
     
-    if (configuredPort && configuredPort !== port.toString()) {
-      console.warn(`⚠️  AVISO: GOOGLE_REDIRECT_URI usa porta ${configuredPort}, mas servidor está na porta ${port}`);
-      console.warn(`⚠️  Usando porta dinâmica (${port}) para evitar erros. Atualize GOOGLE_REDIRECT_URI ou PORT no .env`);
-      // Garante que usa localhost mesmo se a porta for diferente
-      return `http://localhost:${port}/api/auth/google/callback`;
-    }
     return configuredUri;
   }
   
-  // SEMPRE usa localhost no redirect URI (Google não aceita 0.0.0.0)
-  // Mesmo que o servidor escute em 0.0.0.0, o redirect URI deve ser localhost
-  const dynamicUri = `http://localhost:${port}/api/auth/google/callback`;
-  return dynamicUri;
+  // Em produção, usa variáveis de ambiente ou domínio padrão
+  if (isProduction) {
+    // Prioriza API_URL, depois BACKEND_URL, depois domínio padrão
+    const apiUrl = process.env.API_URL || process.env.BACKEND_URL || 'https://api.gosttactical.com.br';
+    return `${apiUrl}/api/auth/google/callback`;
+  }
+  
+  // Em desenvolvimento, sempre usa localhost
+  return `http://localhost:${port}/api/auth/google/callback`;
 };
 
 const redirectUri = getRedirectUri();
@@ -185,4 +187,5 @@ export class GoogleAuthService {
     return user;
   }
 }
+
 
