@@ -4,6 +4,10 @@ import { Usuario } from '../server/entities/usuarios.entity.js';
 import { getGoogleRedirectUri } from '../config/urls.js';
 
 const redirectUri = getGoogleRedirectUri();
+console.log('🔗 Google OAuth Redirect URI:', redirectUri);
+console.log('🔑 Google Client ID:', process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'NÃO CONFIGURADO');
+console.log('🔐 Google Client Secret:', process.env.GOOGLE_CLIENT_SECRET ? 'CONFIGURADO' : 'NÃO CONFIGURADO');
+
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
@@ -17,11 +21,14 @@ export class GoogleAuthService {
       'https://www.googleapis.com/auth/userinfo.profile',
     ];
 
-    return client.generateAuthUrl({
+    const authUrl = client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
       prompt: 'consent',
     });
+
+    console.log('🔗 Google Auth URL gerada:', authUrl.substring(0, 100) + '...');
+    return authUrl;
   }
 
   async verifyIdToken(idToken: string) {

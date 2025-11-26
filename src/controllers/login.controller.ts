@@ -63,14 +63,27 @@ export class LoginController {
                 res.setHeader('Access-Control-Allow-Credentials', 'true');
             }
 
-            const { code } = req.query;
+            const { code, error, error_description } = req.query;
+            
+            if (error) {
+                console.error('❌ Erro do Google OAuth:', {
+                    error,
+                    error_description,
+                    query: req.query,
+                });
+                const frontendUrl = this.getFrontendUrl(req);
+                return res.redirect(`${frontendUrl}?error=${error}&error_description=${error_description || 'Erro na autenticação'}`);
+            }
+
             if (!code || typeof code !== 'string') {
+                console.error('❌ Código de autorização não fornecido:', req.query);
                 return res.status(400).json({
                     success: false,
                     message: 'Código de autorização não fornecido',
                 });
             }
 
+            console.log('✅ Processando callback do Google com código:', code.substring(0, 20) + '...');
             const result = await this.loginService.handleGoogleCallback(code);
 
             req.session.userId = result.user.id;
@@ -87,13 +100,20 @@ export class LoginController {
             
             req.session.save((saveErr) => {
                 if (saveErr) {
+                    console.error('❌ Erro ao salvar sessão:', saveErr);
                     return res.redirect(frontendUrl);
                 }
+                console.log('✅ Login realizado com sucesso, redirecionando para:', frontendUrl);
                 res.redirect(frontendUrl);
             });
         } catch (error: any) {
+            console.error('❌ Erro no callback do Google:', {
+                message: error.message,
+                stack: error.stack,
+                query: req.query,
+            });
             const frontendUrl = this.getFrontendUrl(req);
-            res.redirect(frontendUrl);
+            res.redirect(`${frontendUrl}?error=auth_failed&message=${encodeURIComponent(error.message || 'Erro ao autenticar')}`);
         }
     }
 

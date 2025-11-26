@@ -44,13 +44,18 @@ export function getFrontendUrlFromRequest(origin?: string, host?: string, protoc
 
 export function getGoogleRedirectUri(): string {
   if (process.env.GOOGLE_REDIRECT_URI) {
-    const configuredUri = process.env.GOOGLE_REDIRECT_URI;
+    const configuredUri = process.env.GOOGLE_REDIRECT_URI.trim();
     if (configuredUri.includes('0.0.0.0') || configuredUri.includes(':3000') || configuredUri.includes('www.gosttactical.com.br')) {
-      return `${getBackendUrl()}/api/auth/google/callback`;
+      const fallbackUri = `${getBackendUrl()}/api/auth/google/callback`;
+      console.warn('⚠️ GOOGLE_REDIRECT_URI inválido, usando:', fallbackUri);
+      return fallbackUri;
     }
+    console.log('✅ Usando GOOGLE_REDIRECT_URI configurado:', configuredUri);
     return configuredUri;
   }
-  return `${getBackendUrl()}/api/auth/google/callback`;
+  const defaultUri = `${getBackendUrl()}/api/auth/google/callback`;
+  console.log('📍 Usando GOOGLE_REDIRECT_URI padrão:', defaultUri);
+  return defaultUri;
 }
 
 export function getCorsOrigins(): string[] {
