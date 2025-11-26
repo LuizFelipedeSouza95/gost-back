@@ -779,6 +779,16 @@
           "default": "true",
           "mappedType": "boolean"
         },
+        "destaque": {
+          "name": "destaque",
+          "type": "boolean",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "default": "false",
+          "mappedType": "boolean"
+        },
         "data_publicacao": {
           "name": "data_publicacao",
           "type": "date",

@@ -24,6 +24,9 @@ export class Noticia extends BaseEntity {
   @Property({ type: 'boolean', default: true })
   publicado: boolean = true;
 
+  @Property({ type: 'boolean', default: false })
+  destaque: boolean = false;
+
   @Property({ type: 'date', nullable: true })
   data_publicacao?: Date | null;
 
