@@ -42,53 +42,64 @@ export function createApp(orm: MikroORM) {
   // MikroORM Request Context
   app.use((req, _res, next) => RequestContext.create(orm.em, next));
 
-  // CORS - Configuração completa ANTES de qualquer outro middleware que possa interferir
-  // IMPORTANTE: Quando credentials: true, NÃO podemos usar origin: '*'
-  // Precisamos usar origin: true (que permite todas mas funciona com credentials)
-  app.use(cors({
-    origin: true, // Permite todas as origens e funciona com credentials (não pode ser '*' quando credentials é true)
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'Accept', 'Origin', 'X-Requested-With', 'Cookie', 'Set-Cookie'],
-    exposedHeaders: ['X-Request-Id', 'Set-Cookie'],
-    credentials: true, // CRÍTICO: true para permitir cookies/sessões cross-origin
-    maxAge: 86400, // Cache preflight por 24 horas
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-  }));
-
-  // CORS - Headers manuais adicionais (garantia extra)
+  // CORS - PRIMEIRO middleware (antes de tudo que possa interferir)
+  // Headers manuais PRIMEIRO para garantir máxima compatibilidade
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     
-    // Se houver origem, permite ela (necessário quando credentials é true)
+    // Permite a origem específica da requisição (necessário quando credentials é true)
     if (origin) {
-      res.header('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      // Se não houver origem (ex: requisições do mesmo domínio), permite todas
+      res.setHeader('Access-Control-Allow-Origin', '*');
     }
     
-    // Garante que credentials está habilitado
-    res.header('Access-Control-Allow-Credentials', 'true');
+    // CRÍTICO: Permite credenciais (cookies, sessões)
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     
-    // Headers adicionais que podem ser necessários
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Request-Id, Accept, Origin, X-Requested-With, Cookie, Set-Cookie');
-    res.header('Access-Control-Expose-Headers', 'X-Request-Id, Set-Cookie');
-    res.header('Access-Control-Max-Age', '86400');
+    // Permite todos os métodos
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+    
+    // Permite todos os headers
+    res.setHeader('Access-Control-Allow-Headers', '*');
+    
+    // Expõe todos os headers na resposta
+    res.setHeader('Access-Control-Expose-Headers', '*');
+    
+    // Cache do preflight
+    res.setHeader('Access-Control-Max-Age', '86400');
     
     // Responde preflight imediatamente
     if (req.method === 'OPTIONS') {
-      return res.status(204).send();
+      return res.status(204).end();
     }
     
     next();
   });
 
-  // Security middleware - configurado para não interferir com CORS
-  // IMPORTANTE: Helmet deve vir DEPOIS do CORS para não sobrescrever headers
+  // CORS - Middleware do pacote (segunda camada)
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Permite todas as origens quando credentials é true
+      callback(null, true);
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowedHeaders: '*',
+    exposedHeaders: '*',
+    credentials: true,
+    maxAge: 86400,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  }));
+
+  // Security middleware - configurado para NÃO interferir com CORS
   app.use(helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     crossOriginEmbedderPolicy: false,
-    // Desabilita alguns headers do Helmet que podem interferir com CORS
-    contentSecurityPolicy: false, // Pode interferir, desabilitar se necessário
+    contentSecurityPolicy: false,
+    // IMPORTANTE: Não remover headers CORS
+    crossOriginOpenerPolicy: false,
   }));
 
   // Session middleware
