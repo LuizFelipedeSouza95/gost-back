@@ -16,9 +16,10 @@ export const sessionConfig: session.SessionOptions = {
     // Mas 'none' REQUER secure: true, caso contrário o navegador rejeita o cookie
     // Em desenvolvimento, usamos 'lax' com secure: false
     sameSite: isProduction ? 'none' : 'lax',
-    // Não definir domain permite cookies cross-origin quando sameSite: 'none'
-    // O cookie será enviado de api.gosttactical.com.br para www.gosttactical.com.br automaticamente
-    domain: undefined,
+    // Em produção, define domain como '.gosttactical.com.br' para permitir cookies entre subdomínios
+    // Isso permite que o cookie seja acessível tanto em api.gosttactical.com.br quanto em www.gosttactical.com.br
+    // O ponto inicial (.) é importante para permitir todos os subdomínios
+    domain: isProduction ? '.gosttactical.com.br' : undefined,
     // Path explícito para garantir que o cookie seja enviado
     path: '/',
   },

@@ -112,33 +112,47 @@ export class LoginController {
                 hasPicture: !!result.user.picture,
             });
 
-            // Regenera a sessão para garantir segurança (evita session fixation)
-            req.session.regenerate((regenerateErr) => {
-                if (regenerateErr) {
-                    console.error('❌ Erro ao regenerar sessão:', regenerateErr);
-                    const frontendUrl = this.getFrontendUrl(req);
+            // Salva dados do usuário na sessão
+            req.session.userId = result.user.id;
+            req.session.user = {
+                id: result.user.id,
+                email: result.user.email,
+                name: result.user.name || null,
+                picture: result.user.picture || null,
+                roles: result.user.roles,
+            };
+
+            console.log('💾 Salvando sessão...', {
+                sessionId: req.sessionID,
+                userId: req.session.userId,
+                hasUser: !!req.session.user,
+            });
+
+            const frontendUrl = this.getFrontendUrl(req);
+            
+            // Marca a sessão como modificada para garantir que seja salva
+            req.session.touch();
+            
+            // Salva a sessão ANTES de fazer o redirect
+            req.session.save((saveErr) => {
+                if (saveErr) {
+                    console.error('❌ Erro ao salvar sessão:', saveErr);
                     return res.redirect(frontendUrl);
                 }
 
-                // Salva dados do usuário na nova sessão
-                req.session.userId = result.user.id;
-                req.session.user = {
-                    id: result.user.id,
-                    email: result.user.email,
-                    name: result.user.name || null,
-                    picture: result.user.picture || null,
-                    roles: result.user.roles,
-                };
-
-                console.log('💾 Salvando sessão regenerada...', {
+                console.log('✅ Sessão salva com sucesso!', {
                     sessionId: req.sessionID,
                     userId: req.session.userId,
-                    hasUser: !!req.session.user,
+                    email: req.session.user?.email,
                 });
-
-                // Salva a sessão antes de redirecionar
-                const frontendUrl = this.getFrontendUrl(req);
-                console.log('🔄 Redirecionando para:', frontendUrl);
+                
+                // Verifica se o cookie está sendo enviado
+                const setCookieHeader = res.getHeader('Set-Cookie');
+                console.log('🍪 Set-Cookie header:', setCookieHeader ? 'presente' : 'ausente');
+                if (setCookieHeader) {
+                    console.log('🍪 Cookie sendo enviado:', Array.isArray(setCookieHeader) ? setCookieHeader[0] : setCookieHeader);
+                }
+                
                 console.log('🍪 Configuração do cookie:', {
                     secure: req.session.cookie.secure,
                     sameSite: req.session.cookie.sameSite,
@@ -147,20 +161,10 @@ export class LoginController {
                     path: req.session.cookie.path,
                 });
                 
-                req.session.save((saveErr) => {
-                    if (saveErr) {
-                        console.error('❌ Erro ao salvar sessão:', saveErr);
-                        return res.redirect(frontendUrl);
-                    }
-
-                    console.log('✅ Sessão salva com sucesso!', {
-                        sessionId: req.sessionID,
-                        userId: req.session.userId,
-                        email: req.session.user?.email,
-                    });
-                    console.log('🔄 Redirecionando para:', frontendUrl);
-                    res.redirect(frontendUrl);
-                });
+                console.log('🔄 Redirecionando para:', frontendUrl);
+                
+                // Faz o redirect - o cookie já foi salvo e será enviado automaticamente
+                res.redirect(frontendUrl);
             });
         } catch (error: any) {
             console.error('❌ Erro no callback do Google:', error);
