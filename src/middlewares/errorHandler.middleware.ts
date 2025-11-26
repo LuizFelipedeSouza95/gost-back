@@ -22,6 +22,26 @@ export const globalErrorHandler = (
     method: req.method,
   });
 
+  // Erro de JSON inválido
+  if (err instanceof SyntaxError && 'body' in err) {
+    res.status(400).json({
+      error: 'JSON inválido',
+      message: 'O corpo da requisição contém JSON mal formatado',
+      requestId,
+    });
+    return;
+  }
+
+  // Erro de CORS
+  if (err.message === 'Origem não permitida pelo CORS' || err.message.includes('CORS')) {
+    res.status(403).json({
+      error: 'Erro de CORS',
+      message: 'Origem da requisição não permitida',
+      requestId,
+    });
+    return;
+  }
+
   // Erro do MikroORM - Entidade não encontrada
   if (err instanceof NotFoundError) {
     res.status(404).json({
@@ -54,7 +74,7 @@ export const globalErrorHandler = (
 
   // Erro padrão
   res.status(500).json({
-    error: 'Internal Server Error',
+    error: 'Erro interno',
     message: process.env.NODE_ENV === 'production'
       ? 'Ocorreu um erro interno no servidor'
       : err.message,

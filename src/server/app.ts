@@ -42,28 +42,69 @@ export function createApp(orm: MikroORM) {
   // MikroORM Request Context
   app.use((req, _res, next) => RequestContext.create(orm.em, next));
 
-  // Security middleware
-  app.use(helmet());
+  // CORS - Headers manuais (PRIMEIRA CAMADA - mais permissivo)
+  app.use((req, res, next) => {
+    // Permite TODAS as origens
+    res.header('Access-Control-Allow-Origin', '*');
+    
+    // Permite TODOS os métodos HTTP
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+    
+    // Permite TODOS os headers que o cliente quiser enviar
+    res.header('Access-Control-Allow-Headers', '*');
+    
+    // Expõe TODOS os headers na resposta
+    res.header('Access-Control-Expose-Headers', '*');
+    
+    // Cache do preflight por 24 horas (86400 segundos)
+    res.header('Access-Control-Max-Age', '86400');
+    
+    // Se for uma requisição OPTIONS (preflight), responde imediatamente
+    if (req.method === 'OPTIONS') {
+      return res.status(204).send();
+    }
+    
+    next();
+  });
 
-  // Session middleware (deve vir antes do CORS para configurar cookies corretamente)
-  app.use(session(sessionConfig) as unknown as express.RequestHandler);
-
-  // CORS (deve vir depois da sessão)
-  // Liberado para todas as origens
+  // CORS - Middleware do pacote (SEGUNDA CAMADA - backup)
   app.use(cors({
-    origin: true, // Permite todas as origens
-    credentials: true, // Importante para cookies de sessão
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
-    exposedHeaders: ['X-Request-Id'],
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowedHeaders: '*',
+    exposedHeaders: '*',
+    credentials: false, // false quando origin é '*'
+    maxAge: 86400,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   }));
+
+  // Security middleware - configurado para não interferir com CORS
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginEmbedderPolicy: false,
+  }));
+
+  // Session middleware
+  app.use(session(sessionConfig) as unknown as express.RequestHandler);
 
   // Compression
   app.use(compression() as unknown as express.RequestHandler);
 
-  // Body parser
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  // Body parser - Limites aumentados para suportar upload de vídeos grandes (até 5GB)
+  app.use(express.urlencoded({ limit: '5120mb', extended: true }));
+  app.use(express.json({ limit: '5120mb' }));
+
+  // Middleware de logging do tamanho do body
+  app.use((req, _, next) => {
+    const bodySize = JSON.stringify(req.body || {}).length;
+    logger.debug({
+      method: req.method,
+      url: req.url,
+      bodySize: `${bodySize} bytes`,
+    }, 'Request recebido');
+    next();
+  });
 
   // Rate limiting
   const limiter = rateLimit({
@@ -78,15 +119,11 @@ export function createApp(orm: MikroORM) {
   // Rotas da API
   app.use('/api', mainRoutes);
 
-  // Healthcheck
+  // Healthcheck - versão simplificada e rápida
   app.get('/health', async (_req, res) => {
     try {
       await orm.em.getConnection().execute('select 1');
-      res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-      });
+      res.status(200).json({ status: 'ok' });
     } catch (e: any) {
       res.status(500).json({
         status: 'error',
