@@ -5,13 +5,13 @@ import { requireAuth, requireAdmin } from '../middlewares/auth.middleware.js';
 const router = Router();
 const jogosController = new JogosController();
 
-// Listar e obter são públicos, criar e confirmar presença requerem autenticação
+// Listar e obter são públicos, confirmar presença pode ser público (com nome) ou autenticado
 router.get('/', jogosController.list.bind(jogosController));
 router.get('/:id', jogosController.getById.bind(jogosController));
+router.post('/:id/confirm', jogosController.confirmPresence.bind(jogosController)); // Público, mas pode requerer nome se não autenticado
 
 router.use(requireAuth);
 router.post('/', jogosController.create.bind(jogosController));
-router.post('/:id/confirm', jogosController.confirmPresence.bind(jogosController));
 router.delete('/:id/confirm', jogosController.removePresence.bind(jogosController));
 
 // Atualizar e deletar requerem admin

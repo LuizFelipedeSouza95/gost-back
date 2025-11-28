@@ -185,6 +185,7 @@ export class JogosController {
       }
 
       const { id } = req.params;
+      const { nome } = req.body; // Nome para confirmação sem autenticação
       const jogo = await em.findOne(Jogo, { id });
 
       if (!jogo) {
@@ -195,15 +196,25 @@ export class JogosController {
       }
 
       const sessionUser = req.session?.user;
-      if (!sessionUser) {
-        return res.status(401).json({
-          success: false,
-          message: 'Não autenticado',
-        });
+      let confirmationId: string;
+
+      if (sessionUser) {
+        // Usuário autenticado: usa o ID do usuário
+        confirmationId = sessionUser.id;
+      } else {
+        // Usuário não autenticado: precisa fornecer nome
+        if (!nome || !nome.trim()) {
+          return res.status(400).json({
+            success: false,
+            message: 'Nome é obrigatório para confirmação sem autenticação',
+          });
+        }
+        // Cria um identificador único para confirmação anônima
+        confirmationId = `guest:${nome.trim()}:${Date.now()}`;
       }
 
-      if (!jogo.confirmations.includes(sessionUser.id)) {
-        jogo.confirmations.push(sessionUser.id);
+      if (!jogo.confirmations.includes(confirmationId)) {
+        jogo.confirmations.push(confirmationId);
         await em.flush();
       }
 
