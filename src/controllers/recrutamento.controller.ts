@@ -249,7 +249,11 @@ export class RecrutamentoController {
       const { etapa, status, observacoes } = req.body;
 
       const etapasValidas = ['inscricao', 'avaliacao', 'qa', 'votacao', 'integracao'];
-      const statusValidos = ['pendente', 'aprovado', 'reprovado'];
+      // Status válidos: pendente, aprovado, reprovado para todas as etapas
+      // Para a etapa Q&A, também aceita 'iniciado'
+      const statusValidos = etapa === 'qa' 
+        ? ['pendente', 'aprovado', 'reprovado', 'iniciado']
+        : ['pendente', 'aprovado', 'reprovado'];
 
       if (!etapasValidas.includes(etapa)) {
         return res.status(400).json({
@@ -287,11 +291,24 @@ export class RecrutamentoController {
         recrutamento.status = 'reprovado';
       }
 
+      // Se a etapa de avaliação foi aprovada, atualiza a patente do usuário para "recruta"
+      if (etapa === 'avaliacao' && status === 'aprovado' && recrutamento.usuario_id) {
+        const usuario = await em.findOne(Usuario, { id: recrutamento.usuario_id });
+        if (usuario) {
+          // Atualiza a patente para "recruta" se o usuário ainda estiver como "interessado"
+          if (usuario.patent === 'interessado' || !usuario.patent) {
+            usuario.patent = 'recruta';
+            await em.flush();
+          }
+        }
+      }
+
       // Se todas as etapas foram aprovadas, marca como aprovado
+      // Para etapa_qa, considera tanto 'aprovado' quanto 'iniciado' como válido
       if (
         recrutamento.etapa_inscricao === 'aprovado' &&
         recrutamento.etapa_avaliacao === 'aprovado' &&
-        recrutamento.etapa_qa === 'aprovado' &&
+        (recrutamento.etapa_qa === 'aprovado' || recrutamento.etapa_qa === 'iniciado') &&
         recrutamento.etapa_votacao === 'aprovado' &&
         recrutamento.etapa_integracao === 'aprovado'
       ) {
@@ -302,11 +319,13 @@ export class RecrutamentoController {
 
       // Envia email de atualização
       if (status !== 'pendente') {
+        // Mapear 'iniciado' para 'aprovado' no email (ou criar um novo tipo se necessário)
+        const emailStatus = status === 'iniciado' ? 'aprovado' : status as 'aprovado' | 'reprovado';
         await this.emailService.sendStageUpdate({
           nome: recrutamento.nome,
           email: recrutamento.email,
           etapa: this.getEtapaNome(etapa),
-          status: status as 'aprovado' | 'reprovado',
+          status: emailStatus,
           observacoes: observacoes || undefined,
         });
       }
@@ -423,33 +442,49 @@ export class RecrutamentoController {
       // Adiciona ou atualiza voto
       recrutamento.votos[sessionUser.id] = voto;
 
-      // Verifica se todos os membros do comando votaram
-      // Busca membros do comando (comando ou sub_comando) que são membros oficiais
-      const comandoMembers = await em.find(Usuario, {
+      // Busca membros da diretoria (comando ou sub_comando) - somente diretoria
+      const diretoriaMembers = await em.find(Usuario, {
         $or: [
           { patent: 'comando' },
           { patent: 'sub_comando' },
         ],
         active: true,
       });
-      
-      // Filtra apenas os que têm o role membro_oficial
-      const comandoOficial = comandoMembers.filter(u => u.roles?.includes('membro_oficial'));
 
-      const totalComando = comandoOficial.length;
+      const totalDiretoria = diretoriaMembers.length;
       const votosAprovados = Object.values(recrutamento.votos).filter(v => v === 'aprovado').length;
+      const votosReprovados = Object.values(recrutamento.votos).filter(v => v === 'reprovado').length;
       const totalVotos = Object.keys(recrutamento.votos).length;
 
-      // Se todos votaram e tem mais de 50% de aprovação, aprova automaticamente
-      if (totalVotos >= totalComando && votosAprovados >= totalComando * 0.5) {
+      // Calcula a maioria necessária (mais da metade)
+      // Exemplo: 4 membros -> maioria = 3, 5 membros -> maioria = 3, 6 membros -> maioria = 4
+      const maioriaNecessaria = Math.floor(totalDiretoria / 2) + 1;
+
+      // Se a maioria votou aprovado, aprova automaticamente (não precisa esperar todos votarem)
+      if (votosAprovados >= maioriaNecessaria) {
         recrutamento.etapa_votacao = 'aprovado';
         recrutamento.data_votacao = new Date();
-        recrutamento.observacoes_votacao = `${votosAprovados}/${totalComando} votos aprovados`;
-      } else if (totalVotos >= totalComando && votosAprovados < totalComando * 0.5) {
+        recrutamento.observacoes_votacao = `${votosAprovados}/${totalDiretoria} votos aprovados (maioria alcançada)`;
+      } 
+      // Se a maioria votou reprovado, reprova automaticamente
+      else if (votosReprovados >= maioriaNecessaria) {
         recrutamento.etapa_votacao = 'reprovado';
         recrutamento.data_votacao = new Date();
-        recrutamento.observacoes_votacao = `${votosAprovados}/${totalComando} votos aprovados (menos de 50%)`;
+        recrutamento.observacoes_votacao = `${votosReprovados}/${totalDiretoria} votos reprovados (maioria reprovou)`;
         recrutamento.status = 'reprovado';
+      }
+      // Se todos votaram mas não alcançou maioria em nenhum lado, decide pela maioria simples
+      else if (totalVotos >= totalDiretoria) {
+        if (votosAprovados > votosReprovados) {
+          recrutamento.etapa_votacao = 'aprovado';
+          recrutamento.data_votacao = new Date();
+          recrutamento.observacoes_votacao = `${votosAprovados}/${totalDiretoria} votos aprovados`;
+        } else {
+          recrutamento.etapa_votacao = 'reprovado';
+          recrutamento.data_votacao = new Date();
+          recrutamento.observacoes_votacao = `${votosReprovados}/${totalDiretoria} votos reprovados`;
+          recrutamento.status = 'reprovado';
+        }
       }
 
       await em.persistAndFlush(recrutamento);
@@ -461,7 +496,7 @@ export class RecrutamentoController {
           total: totalVotos,
           aprovados: votosAprovados,
           reprovados: totalVotos - votosAprovados,
-          totalComando,
+          totalDiretoria,
         },
       });
     } catch (error: any) {

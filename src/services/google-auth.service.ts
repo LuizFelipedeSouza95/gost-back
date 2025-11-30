@@ -121,7 +121,7 @@ export class GoogleAuthService {
         comando_geral: [],
         classe: '',
         data_admissao_gost: '',
-        patent: 'soldado',
+        patent: 'interessado', // Patente genérica para novos usuários que fazem login
         active: true,
         is_comandante_squad: false,
         nome_squad_subordinado: null,

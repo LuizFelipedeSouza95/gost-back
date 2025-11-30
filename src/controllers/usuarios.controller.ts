@@ -59,7 +59,8 @@ export class UsuariosController {
       }
 
       const { id } = req.params;
-      const usuario = await em.findOne(Usuario, { id, active: true }, { populate: ['squad'] });
+      // Não filtrar por active para permitir buscar usuários inativos também (útil para responsáveis)
+      const usuario = await em.findOne(Usuario, { id }, { populate: ['squad'] });
 
       if (!usuario) {
         return res.status(404).json({
@@ -68,9 +69,37 @@ export class UsuariosController {
         });
       }
 
+      // Garantir que todos os campos sejam carregados (refresh pode ser necessário)
+      await em.refresh(usuario);
+
+      // Serializar explicitamente para garantir que todos os campos sejam incluídos
+      // Acessar telefone diretamente da entidade
+      // const telefoneValue = (usuario as any).telefone;
+
+      // Log para debug
+      // console.log('getById - usuario.telefone (raw):', telefoneValue);
+      // console.log('getById - tipo:', typeof telefoneValue);
+
+      const usuarioData = {
+        id: usuario.id,
+        email: usuario.email,
+        name: usuario.name,
+        picture: usuario.picture,
+        nome_guerra: usuario.nome_guerra,
+        telefone: usuario.telefone,
+        patent: usuario.patent,
+        roles: usuario.roles,
+        active: usuario.active,
+        squad: usuario.squad,
+        createdAt: usuario.createdAt,
+        updatedAt: usuario.updatedAt,
+      };
+
+      console.log('getById - usuarioData.telefone:', usuarioData.telefone);
+
       return res.status(200).json({
         success: true,
-        data: usuario,
+        data: usuarioData,
       });
     } catch (error: any) {
       return res.status(500).json({
@@ -124,6 +153,7 @@ export class UsuariosController {
       const allowedFields = [
         'name',
         'nome_guerra',
+        'telefone',
         'patent',
         'classe',
         'data_admissao_gost',
@@ -215,7 +245,7 @@ export class UsuariosController {
         return res.status(500).json({ success: false, message: 'EntityManager não disponível' });
       }
 
-      const { name, email, nome_guerra, patent, roles, active, squad_id, picture } = req.body;
+      const { name, email, nome_guerra, telefone, patent, roles, active, squad_id, picture } = req.body;
 
       // Validação: nome e email são obrigatórios
       if (!name || !name.trim()) {
@@ -267,7 +297,8 @@ export class UsuariosController {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         nome_guerra: nome_guerra?.trim() || null,
-        patent: (patent || 'recruta') as 'comando' | 'comando_squad' | 'soldado' | 'sub_comando' | 'recruta',
+        telefone: telefone?.trim() || null,
+        patent: (patent || 'recruta') as 'comando' | 'comando_squad' | 'soldado' | 'sub_comando' | 'recruta' | 'organizacao' | 'interessado',
         roles: roles || ['user'],
         active: active !== undefined ? active : true,
         squad: squad || null,

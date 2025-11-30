@@ -39,8 +39,8 @@ export class Usuario extends BaseEntity implements InterfaceUser {
     @Property({ type: 'text', nullable: true })
     data_admissao_gost: string = '';
 
-    @Property({ type: 'text', nullable: true, default: 'recruta' })
-    patent: "comando" | "comando_squad" | "soldado" | "sub_comando" | "recruta" = 'soldado';
+    @Property({ type: 'text', nullable: true, default: 'interessado' })
+    patent: "comando" | "comando_squad" | "soldado" | "sub_comando" | "recruta" | "organizacao" | "interessado" = 'interessado';
 
     @Property({ type: 'boolean', nullable: false, default: true })
     active: boolean = true;
@@ -56,6 +56,9 @@ export class Usuario extends BaseEntity implements InterfaceUser {
 
     @Property({ type: 'text', nullable: true })
     nome_guerra: string | null = null;
+
+    @Property({ type: 'text', nullable: true })
+    telefone?: string | null = null;
 
     // Relacionamento com Squad
     @ManyToOne(() => Squad, { nullable: true })

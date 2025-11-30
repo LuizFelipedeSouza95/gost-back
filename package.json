@@ -12,7 +12,8 @@
     "migration:up": "tsx node_modules/@mikro-orm/cli/cli.js migration:up --config mikro-orm.config.ts",
     "migration:down": "tsx node_modules/@mikro-orm/cli/cli.js migration:down --config mikro-orm.config.ts",
     "migration:list": "tsx node_modules/@mikro-orm/cli/cli.js migration:list --config mikro-orm.config.ts",
-    "migration:pending": "tsx node_modules/@mikro-orm/cli/cli.js migration:pending --config mikro-orm.config.ts"
+    "migration:pending": "tsx node_modules/@mikro-orm/cli/cli.js migration:pending --config mikro-orm.config.ts",
+    "server": "ssh root@72.61.58.144"
   },
   "devDependencies": {
     "@types/compression": "^1.7.5",

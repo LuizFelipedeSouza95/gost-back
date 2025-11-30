@@ -12,6 +12,7 @@ import faqsRoutes from './faqs.routes.js';
 import equipeRoutes from './equipe.routes.js';
 import estatutoRoutes from './estatuto.routes.js';
 import recrutamentoRoutes from './recrutamento.routes.js';
+import agendaRoutes from './agenda.routes.js';
 
 const router = Router();
 const loginController = new LoginController();
@@ -29,5 +30,6 @@ router.use('/faqs', faqsRoutes);
 router.use('/equipe', equipeRoutes);
 router.use('/estatuto', estatutoRoutes);
 router.use('/recrutamento', recrutamentoRoutes);
+router.use('/agenda', agendaRoutes);
 
 export default router;

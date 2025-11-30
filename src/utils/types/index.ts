@@ -13,7 +13,7 @@ export interface InterfaceUser {
     comando_squad: string | null | undefined;
     classe: string | undefined;
     data_admissao_gost: string | undefined;
-    patent: "comando" | "comando_squad" | "soldado" | "sub_comando" | "recruta" | undefined;
+    patent: "comando" | "comando_squad" | "soldado" | "sub_comando" | "recruta" | "organizacao" | "interessado" | undefined;
     active: boolean;
     is_comandante_squad: boolean;
     nome_squad_subordinado: string | null;

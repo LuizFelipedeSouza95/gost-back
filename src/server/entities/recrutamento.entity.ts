@@ -2,7 +2,7 @@ import { Entity, Property, ManyToOne } from '@mikro-orm/core';
 import { BaseEntity } from './base.entity.js';
 import { Usuario } from './usuarios.entity.js';
 
-export type EtapaStatus = 'pendente' | 'aprovado' | 'reprovado';
+export type EtapaStatus = 'pendente' | 'aprovado' | 'reprovado' | 'iniciado';
 export type EtapaTipo = 'inscricao' | 'avaliacao' | 'qa' | 'votacao' | 'integracao';
 
 @Entity({ tableName: 'recrutamentos', schema: process.env.DB_SCHEMA || 'public' })
