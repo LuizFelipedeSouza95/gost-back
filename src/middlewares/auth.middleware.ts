@@ -37,15 +37,6 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction): vo
     return;
   }
 
-  // Log para debug da sessão
-  console.log('🔍 [requireAuth] Verificando sessão:', {
-    hasSession: !!req.session,
-    sessionId: req.session?.id,
-    hasUserId: !!req.session?.userId,
-    hasUser: !!req.session?.user,
-    cookie: req.headers.cookie?.includes('gost.session') ? 'presente' : 'ausente',
-  });
-
   if (req.session && req.session.userId && req.session.user) {
     next();
     return;

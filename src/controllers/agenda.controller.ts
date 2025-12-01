@@ -20,7 +20,6 @@ export class AgendaController {
           orderBy: [
             { data: 'ASC' },
             { ordem: 'ASC' },
-            { hora: 'ASC' },
             { createdAt: 'ASC' },
           ],
         }
@@ -55,7 +54,6 @@ export class AgendaController {
           orderBy: [
             { data: 'ASC' },
             { ordem: 'ASC' },
-            { hora: 'ASC' },
             { createdAt: 'ASC' },
           ],
         }
@@ -115,7 +113,8 @@ export class AgendaController {
         return res.status(500).json({ success: false, message: 'EntityManager não disponível' });
       }
 
-      const { titulo, descricao, data, hora, local, tipo, ordem } = req.body;
+      const { titulo, descricao, data, local, tipo, ordem, ativo } = req.body;
+
 
       if (!titulo || !data) {
         return res.status(400).json({
@@ -124,18 +123,35 @@ export class AgendaController {
         });
       }
 
+      // Validar e converter data
+      let dataObj: Date;
+      try {
+        dataObj = new Date(data);
+        if (isNaN(dataObj.getTime())) {
+          return res.status(400).json({
+            success: false,
+            message: 'Data inválida',
+          });
+        }
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: 'Data inválida',
+        });
+      }
+
       const agendaItem = em.create(Agenda, {
         titulo: titulo.trim(),
         descricao: descricao?.trim() || null,
-        data: new Date(data),
-        hora: hora?.trim() || null,
+        data: dataObj,
         local: local?.trim() || null,
         tipo: tipo?.trim() || null,
         ordem: ordem ? parseInt(ordem) : null,
-        ativo: true,
+        ativo: ativo !== undefined ? ativo : true,
       } as any);
 
       await em.persistAndFlush(agendaItem);
+
 
       return res.status(201).json({
         success: true,
@@ -143,6 +159,7 @@ export class AgendaController {
         message: 'Item da agenda criado com sucesso',
       });
     } catch (error: any) {
+      console.error('Erro ao criar item da agenda:', error);
       return res.status(500).json({
         success: false,
         message: error.message || 'Erro ao criar item da agenda',
@@ -170,12 +187,11 @@ export class AgendaController {
         });
       }
 
-      const { titulo, descricao, data, hora, local, tipo, ordem, ativo } = req.body;
+      const { titulo, descricao, data, local, tipo, ordem, ativo } = req.body;
 
       if (titulo !== undefined) agendaItem.titulo = titulo.trim();
       if (descricao !== undefined) agendaItem.descricao = descricao?.trim() || null;
       if (data !== undefined) agendaItem.data = new Date(data);
-      if (hora !== undefined) agendaItem.hora = hora?.trim() || null;
       if (local !== undefined) agendaItem.local = local?.trim() || null;
       if (tipo !== undefined) agendaItem.tipo = tipo?.trim() || null;
       if (ordem !== undefined) agendaItem.ordem = ordem ? parseInt(ordem) : null;
@@ -207,9 +223,19 @@ export class AgendaController {
       }
 
       const { id } = req.params;
-      const agendaItem = await em.findOne(Agenda, { id });
+
+      if (!id || id.trim() === '') {
+        return res.status(400).json({
+          success: false,
+          message: 'ID não fornecido',
+        });
+      }
+
+      const agendaItem = await em.findOne(Agenda, { id: id.trim() });
 
       if (!agendaItem) {
+        // Tentar buscar todos os IDs para debug
+        const allItems = await em.find(Agenda, {});
         return res.status(404).json({
           success: false,
           message: 'Item da agenda não encontrado',
@@ -223,6 +249,7 @@ export class AgendaController {
         message: 'Item da agenda excluído com sucesso',
       });
     } catch (error: any) {
+      console.error('Erro ao deletar item da agenda:', error);
       return res.status(500).json({
         success: false,
         message: error.message || 'Erro ao excluir item da agenda',

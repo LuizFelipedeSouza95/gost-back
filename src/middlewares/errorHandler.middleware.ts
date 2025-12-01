@@ -26,14 +26,6 @@ export const globalErrorHandler = (
   res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Access-Control-Expose-Headers', '*');
 
-  // Log do erro
-  console.error(`[${requestId}] Error:`, {
-    message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-    path: req.path,
-    method: req.method,
-  });
-
   // Erro de JSON inválido
   if (err instanceof SyntaxError && 'body' in err) {
     res.status(400).json({

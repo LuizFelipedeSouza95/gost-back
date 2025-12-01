@@ -7,13 +7,10 @@ export class Agenda extends BaseEntity {
   titulo!: string;
 
   @Property({ type: 'text', nullable: true })
-  descricao?: string | null;
+  descricao?: string | null; // Pode conter logo_url:URL no formato logo_url:URL
 
   @Property({ type: 'date' })
   data!: Date;
-
-  @Property({ type: 'text', nullable: true })
-  hora?: string | null;
 
   @Property({ type: 'text', nullable: true })
   local?: string | null;
