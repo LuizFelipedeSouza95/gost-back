@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "buildCommand": "yarn build",
+  "installCommand": "yarn install",
+  "functions": {
+    "api/index.ts": {
+      "runtime": "@vercel/node",
+      "includeFiles": [
+        "dist/**",
+        "server/**",
+        "mikro-orm.config.ts"
+      ],
+      "maxDuration": 30
+    }
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.ts"
+    }
+  ]
+}
