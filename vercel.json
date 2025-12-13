@@ -5,11 +5,7 @@
   "functions": {
     "api/index.ts": {
       "runtime": "@vercel/node",
-      "includeFiles": [
-        "dist/**",
-        "server/**",
-        "mikro-orm.config.ts"
-      ],
+      "includeFiles": "dist/**",
       "maxDuration": 30
     }
   },

@@ -40,7 +40,7 @@ O arquivo `vercel.json` está configurado para:
 - **Build:** Compila TypeScript com `yarn build`
 - **Routes:** Todas as rotas são direcionadas para `/api/index.ts`
 - **Functions:** Configura a função serverless com runtime `@vercel/node` e timeout de 30s
-- **Include Files:** Inclui arquivos necessários (dist, server, migrations)
+- **Include Files:** Inclui arquivos compilados de `dist/**` (todos os arquivos necessários estão em `dist/` após o build)
 
 **Importante:** Não use `outputDirectory` para projetos serverless-only. O Vercel detecta automaticamente que é um projeto serverless pela presença da pasta `api/`.
 
